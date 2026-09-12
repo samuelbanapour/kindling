@@ -30,26 +30,26 @@ WORDCHARS='*?_-.[]~&;!#$%^(){}<>'
 # The test avoids the (#i) glob flag on purpose: extended_glob is not set yet
 # at this point in the load order, so (#i) would be matched as literal text and
 # every UTF-8 locale would be reported as ASCII.
-typeset -g _ember_locale=${LC_ALL:-${LC_CTYPE:-${LANG:-}}}
-if [[ ${_ember_locale:l} == *utf*8* ]]; then
-  typeset -g EMBER_UTF8=1
+typeset -g _kindling_locale=${LC_ALL:-${LC_CTYPE:-${LANG:-}}}
+if [[ ${_kindling_locale:l} == *utf*8* ]]; then
+  typeset -g KINDLING_UTF8=1
 else
-  typeset -g EMBER_UTF8=0
+  typeset -g KINDLING_UTF8=0
 fi
-unset _ember_locale
+unset _kindling_locale
 
 # Decorative characters, resolved once. A function returning these through
 # command substitution would fork — per glyph, per prompt — which is precisely
 # the cost this framework exists to avoid.
-typeset -gA EMBER_GLYPH
-if (( EMBER_UTF8 )); then
-  EMBER_GLYPH=(
+typeset -gA KINDLING_GLYPH
+if (( KINDLING_UTF8 )); then
+  KINDLING_GLYPH=(
     prompt '❯'  continue '…'  ok '✓'     fail '✗'    warn '!'
     ahead  '⇡'  behind   '⇣'  job '⚙'    conflict '✖'
     on     '●'  off      '○'  bar '█'    sep $'\ue0b0'
   )
 else
-  EMBER_GLYPH=(
+  KINDLING_GLYPH=(
     prompt '>'  continue '...' ok '+'    fail 'x'    warn '!'
     ahead  '^'  behind   'v'   job '&'   conflict '!'
     on     '*'  off      '-'   bar '#'   sep ''
@@ -58,13 +58,13 @@ fi
 
 # Capture the exit status before any other precmd hook can clobber it.
 # Registered from the first library loaded, so it always runs first and every
-# theme can read EMBER_LAST_STATUS instead of racing for `$?`.
+# theme can read KINDLING_LAST_STATUS instead of racing for `$?`.
 autoload -Uz add-zsh-hook
-typeset -g EMBER_LAST_STATUS=0
-typeset -ga EMBER_LAST_PIPESTATUS=(0)
-_ember_capture_status() {
-  EMBER_LAST_STATUS=$?
-  EMBER_LAST_PIPESTATUS=("${pipestatus[@]}")
-  return $EMBER_LAST_STATUS
+typeset -g KINDLING_LAST_STATUS=0
+typeset -ga KINDLING_LAST_PIPESTATUS=(0)
+_kindling_capture_status() {
+  KINDLING_LAST_STATUS=$?
+  KINDLING_LAST_PIPESTATUS=("${pipestatus[@]}")
+  return $KINDLING_LAST_STATUS
 }
-add-zsh-hook precmd _ember_capture_status
+add-zsh-hook precmd _kindling_capture_status

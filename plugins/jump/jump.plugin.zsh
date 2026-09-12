@@ -10,18 +10,18 @@
 #   j -r          rank by frequency only
 #   j --forget    remove the current directory from the database
 
-: ${EMBER_JUMP_DATA:="${XDG_DATA_HOME:-$HOME/.local/share}/ember/jump.db"}
-: ${EMBER_JUMP_MAX:=8000}      # total score before the database is aged down
-typeset -g EMBER_JUMP_DATA EMBER_JUMP_MAX
+: ${KINDLING_JUMP_DATA:="${XDG_DATA_HOME:-$HOME/.local/share}/kindling/jump.db"}
+: ${KINDLING_JUMP_MAX:=8000}      # total score before the database is aged down
+typeset -g KINDLING_JUMP_DATA KINDLING_JUMP_MAX
 
-[[ -d ${EMBER_JUMP_DATA:h} ]] || command mkdir -p "${EMBER_JUMP_DATA:h}"
-[[ -f $EMBER_JUMP_DATA ]] || : >| "$EMBER_JUMP_DATA"
+[[ -d ${KINDLING_JUMP_DATA:h} ]] || command mkdir -p "${KINDLING_JUMP_DATA:h}"
+[[ -f $KINDLING_JUMP_DATA ]] || : >| "$KINDLING_JUMP_DATA"
 
 # Directories never worth recording.
-: ${EMBER_JUMP_EXCLUDE:="$HOME:/tmp:/private/tmp"}
+: ${KINDLING_JUMP_EXCLUDE:="$HOME:/tmp:/private/tmp"}
 
 # Record the current directory. Runs in the background so a cd never blocks.
-_ember_jump_add() {
+_kindling_jump_add() {
   # emulate -L zsh restores `clobber`, which lib/options.zsh turns off for the
   # interactive shell. Without it the redirection below fails on a stale file.
   emulate -L zsh
@@ -29,14 +29,14 @@ _ember_jump_add() {
   [[ -z $dir || $dir == / ]] && return 0
 
   local excl
-  for excl in ${(s.:.)EMBER_JUMP_EXCLUDE}; do
+  for excl in ${(s.:.)KINDLING_JUMP_EXCLUDE}; do
     [[ $dir == ${~excl} ]] && return 0
   done
 
   # $$ alone collides when two `cd`s land in the same second: the writers are
   # backgrounded, so both would target the same temporary file.
-  local now=$EPOCHSECONDS tmp="$EMBER_JUMP_DATA.$$.$RANDOM"
-  local lock="$EMBER_JUMP_DATA.lock"
+  local now=$EPOCHSECONDS tmp="$KINDLING_JUMP_DATA.$$.$RANDOM"
+  local lock="$KINDLING_JUMP_DATA.lock"
 
   # Backgrounded and detached: recording a visit must never delay a `cd`.
   #
@@ -68,7 +68,7 @@ _ember_jump_add() {
       fi
     done
 
-    command awk -v dir="$dir" -v now="$now" -v max="$EMBER_JUMP_MAX" '
+    command awk -v dir="$dir" -v now="$now" -v max="$KINDLING_JUMP_MAX" '
       BEGIN { FS = "|"; OFS = "|" }
       NF == 3 && !($1 in rank) { rank[$1] = $2; when[$1] = $3; order[++n] = $1 }
       END {
@@ -84,8 +84,8 @@ _ember_jump_add() {
           if (r >= 0.98) printf "%s|%.4f|%d\n", p, r, when[p]
         }
       }
-    ' "$EMBER_JUMP_DATA" >| "$tmp" 2>/dev/null &&
-      command mv -f "$tmp" "$EMBER_JUMP_DATA" 2>/dev/null
+    ' "$KINDLING_JUMP_DATA" >| "$tmp" 2>/dev/null &&
+      command mv -f "$tmp" "$KINDLING_JUMP_DATA" 2>/dev/null
 
     command rm -f -- "$tmp" 2>/dev/null
     command rmdir "$lock" 2>/dev/null
@@ -95,10 +95,10 @@ _ember_jump_add() {
 zmodload zsh/datetime 2>/dev/null
 zmodload zsh/zselect 2>/dev/null
 autoload -Uz add-zsh-hook
-add-zsh-hook chpwd _ember_jump_add
+add-zsh-hook chpwd _kindling_jump_add
 
-# _ember_jump_match <mode> <pattern>... — prints "score|path" lines, best last.
-_ember_jump_match() {
+# _kindling_jump_match <mode> <pattern>... — prints "score|path" lines, best last.
+_kindling_jump_match() {
   local mode=$1; shift
   command awk -v now="$EPOCHSECONDS" -v mode="$mode" -v q="${(j:|:)@}" '
     BEGIN { FS = "|"; n = split(q, pats, "|") }
@@ -123,7 +123,7 @@ _ember_jump_match() {
       }
       printf "%.4f|%s\n", score, path
     }
-  ' "$EMBER_JUMP_DATA" 2>/dev/null | command sort -t'|' -k1,1g
+  ' "$KINDLING_JUMP_DATA" 2>/dev/null | command sort -t'|' -k1,1g
 }
 
 j() {
@@ -136,11 +136,11 @@ j() {
       (-r|--rank)   mode=rank; shift ;;
       (-t|--recent) mode=recent; shift ;;
       (--forget)
-        command grep -v "^${PWD:A}|" "$EMBER_JUMP_DATA" >| "$EMBER_JUMP_DATA.tmp" &&
-          command mv -f "$EMBER_JUMP_DATA.tmp" "$EMBER_JUMP_DATA"
+        command grep -v "^${PWD:A}|" "$KINDLING_JUMP_DATA" >| "$KINDLING_JUMP_DATA.tmp" &&
+          command mv -f "$KINDLING_JUMP_DATA.tmp" "$KINDLING_JUMP_DATA"
         print -- "forgot ${PWD:A}"; return 0 ;;
       (--clear)
-        : >| "$EMBER_JUMP_DATA"; print -- "jump database cleared"; return 0 ;;
+        : >| "$KINDLING_JUMP_DATA"; print -- "jump database cleared"; return 0 ;;
       (-h|--help)
         print -- "usage: j [-l] [-r|-t] <fragment>...   j --forget | --clear"
         return 0 ;;
@@ -154,7 +154,7 @@ j() {
   (( $# )) || { cd -- "$HOME"; return }
 
   local -a results
-  results=(${(f)"$(_ember_jump_match "$mode" "$@")"})
+  results=(${(f)"$(_kindling_jump_match "$mode" "$@")"})
   results=(${results:#})
 
   if (( ! ${#results} )); then
@@ -173,8 +173,8 @@ j() {
   local best=${results[-1]#*|}
   if [[ ! -d $best ]]; then
     # Stale entry: drop it and try again.
-    command grep -v "^${best}|" "$EMBER_JUMP_DATA" >| "$EMBER_JUMP_DATA.tmp" &&
-      command mv -f "$EMBER_JUMP_DATA.tmp" "$EMBER_JUMP_DATA"
+    command grep -v "^${best}|" "$KINDLING_JUMP_DATA" >| "$KINDLING_JUMP_DATA.tmp" &&
+      command mv -f "$KINDLING_JUMP_DATA.tmp" "$KINDLING_JUMP_DATA"
     j "$@"
     return
   fi
@@ -185,24 +185,24 @@ j() {
 ji() {
   (( $+commands[fzf] )) || { j -l "$@"; return }
   local target
-  target=$(_ember_jump_match frecent "$@" | command sort -t'|' -k1,1gr |
+  target=$(_kindling_jump_match frecent "$@" | command sort -t'|' -k1,1gr |
     command cut -d'|' -f2- | fzf --height 40% --reverse --prompt='jump> ') || return
   [[ -n $target ]] && cd -- "$target"
 }
 
 # Completion: offer matching directories for `j <tab>`.
-_ember_jump_complete() {
+_kindling_jump_complete() {
   local -a matches
-  matches=(${${(f)"$(_ember_jump_match frecent "${words[CURRENT]}")"}#*|})
+  matches=(${${(f)"$(_kindling_jump_match frecent "${words[CURRENT]}")"}#*|})
   matches=(${matches:#})
   (( ${#matches} )) && compadd -U -Q -a matches
 }
-compdef _ember_jump_complete j 2>/dev/null
+compdef _kindling_jump_complete j 2>/dev/null
 
 # Record the directory the shell started in — but after the first prompt, so
 # the awk it forks never sits between you and a usable shell.
-if (( $+functions[ember_defer] )); then
-  ember_defer '_ember_jump_add'
+if (( $+functions[kindling_defer] )); then
+  kindling_defer '_kindling_jump_add'
 else
-  _ember_jump_add
+  _kindling_jump_add
 fi

@@ -1,8 +1,8 @@
-# Publishing Ember to Homebrew
+# Publishing Kindling to Homebrew
 
 There are two destinations and they have very different bars.
 
-| | `brew tap you/ember && brew install ember` | `brew install ember` |
+| | `brew tap you/kindling && brew install kindling` | `brew install kindling` |
 |---|---|---|
 | Where | your own tap | `homebrew/core` |
 | Approval | none, it's your repo | a PR reviewed by maintainers |
@@ -23,7 +23,7 @@ public interest beyond its author:
 
 Plus, from `Acceptable-Formulae.md`: an immutable tagged release verified by
 SHA-256 (not a moving branch), an open-source licence, and a working `test do`
-block. Ember already satisfies that second group — it's the notability gate
+block. Kindling already satisfies that second group — it's the notability gate
 that takes time.
 
 So: ship the tap now, open a core PR later if it gets traction.
@@ -33,8 +33,8 @@ So: ship the tap now, open a core PR later if it gets traction.
 The repo needs to exist publicly before a formula can point at it.
 
 ```sh
-cd <the ember checkout>
-gh repo create ember --public --source=. --remote=origin \
+cd <the kindling checkout>
+gh repo create kindling --public --source=. --remote=origin \
   --description "A zsh framework: async prompt, lazy loading, one-pass line editing"
 git push -u origin main
 git push origin v1.0.0
@@ -51,7 +51,7 @@ your `git archive`. Take the checksum from the URL Homebrew will actually
 fetch:
 
 ```sh
-curl -fsSL https://github.com/<you>/ember/archive/refs/tags/v1.0.0.tar.gz \
+curl -fsSL https://github.com/<you>/kindling/archive/refs/tags/v1.0.0.tar.gz \
   | shasum -a 256
 ```
 
@@ -60,27 +60,27 @@ curl -fsSL https://github.com/<you>/ember/archive/refs/tags/v1.0.0.tar.gz \
 A tap is just a repo named `homebrew-<something>` with a `Formula/` directory.
 
 ```sh
-gh repo create homebrew-ember --public
-cd homebrew-ember
+gh repo create homebrew-kindling --public
+cd homebrew-kindling
 mkdir -p Formula
-# copy Formula/ember.rb in, with the url and sha256 from step 2
-git add . && git commit -m "ember 1.0.0" && git push
+# copy Formula/kindling.rb in, with the url and sha256 from step 2
+git add . && git commit -m "kindling 1.0.0" && git push
 ```
 
 Then anyone can install it:
 
 ```sh
-brew tap <you>/ember
-brew install ember
+brew tap <you>/kindling
+brew install kindling
 ```
 
 ## 4. Verify before you announce
 
 ```sh
-brew style   --formula Formula/ember.rb          # lint
-brew install --build-from-source <you>/ember/ember
-brew test    <you>/ember/ember                   # runs the formula's test block
-brew audit --strict --formula <you>/ember/ember  # what core CI would run
+brew style   --formula Formula/kindling.rb          # lint
+brew install --build-from-source <you>/kindling/kindling
+brew test    <you>/kindling/kindling                   # runs the formula's test block
+brew audit --strict --formula <you>/kindling/kindling  # what core CI would run
 ```
 
 All four pass on the formula in this repo.
@@ -88,11 +88,11 @@ All four pass on the formula in this repo.
 ## 5. Releasing a new version
 
 ```sh
-# bump EMBER_VERSION in ember.zsh first
+# bump KINDLING_VERSION in kindling.zsh first
 sh release.sh 1.1.0
 ```
 
-It refuses to tag if `ember.zsh` disagrees about the version or if the test
+It refuses to tag if `kindling.zsh` disagrees about the version or if the test
 suite fails, pushes the tag, then fetches the tarball GitHub generated and
 prints the `url` and `sha256` to paste into the tap.
 
@@ -104,25 +104,25 @@ Once you clear the thresholds:
 brew bump-formula-pr --new-formula ...
 ```
 
-or open a PR against `homebrew/core` adding `Formula/e/ember.rb`. Expect
+or open a PR against `homebrew/core` adding `Formula/e/kindling.rb`. Expect
 review on: the `desc` (no leading article, no repeating the name, under 80
 chars), the `test do` block doing something real rather than `--version`, and
 whether the software is genuinely maintained.
 
-## What Homebrew changed about Ember
+## What Homebrew changed about Kindling
 
 Packaging surfaced a design bug worth knowing about.
 
-`$EMBER_CUSTOM` used to default to `$EMBER/custom`. Under Homebrew that is
-`/opt/homebrew/Cellar/ember/<version>/share/ember/custom` — inside the
+`$KINDLING_CUSTOM` used to default to `$KINDLING/custom`. Under Homebrew that is
+`/opt/homebrew/Cellar/kindling/<version>/share/kindling/custom` — inside the
 directory `brew upgrade` **replaces wholesale**. Every plugin and theme a user
 wrote would vanish on the next upgrade, silently.
 
 So the framework now detects how it was installed. The formula writes a marker
-file, `.ember-managed`, containing `homebrew`; `ember.zsh` reads it and puts
-`$EMBER_CUSTOM` under `$XDG_DATA_HOME/ember/custom` instead. A git or plain
-install keeps `$EMBER/custom` exactly as before. `ember update` reads the same
-marker and tells Homebrew users to run `brew upgrade ember` rather than trying
+file, `.kindling-managed`, containing `homebrew`; `kindling.zsh` reads it and puts
+`$KINDLING_CUSTOM` under `$XDG_DATA_HOME/kindling/custom` instead. A git or plain
+install keeps `$KINDLING/custom` exactly as before. `kindling update` reads the same
+marker and tells Homebrew users to run `brew upgrade kindling` rather than trying
 to `git pull` inside the Cellar, which the next upgrade would undo anyway.
 
 This is verified, not assumed: the test suite writes a plugin, reinstalls the

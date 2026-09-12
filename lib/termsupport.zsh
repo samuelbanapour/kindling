@@ -1,7 +1,7 @@
 # lib/termsupport.zsh — terminal title, tab title, and shell integration.
 
-# _ember_set_title <window> <tab>
-_ember_set_title() {
+# _kindling_set_title <window> <tab>
+_kindling_set_title() {
   emulate -L zsh
   setopt no_prompt_subst
   case $TERM in
@@ -16,29 +16,29 @@ _ember_set_title() {
   esac
 }
 
-: ${EMBER_TITLE_IDLE:='%15<..<%~%<<'}          # truncated cwd
-: ${EMBER_TITLE_BUSY:='%15<..<%~%<< | %1~'}
+: ${KINDLING_TITLE_IDLE:='%15<..<%~%<<'}          # truncated cwd
+: ${KINDLING_TITLE_BUSY:='%15<..<%~%<< | %1~'}
 
-_ember_title_precmd() { _ember_set_title "$EMBER_TITLE_IDLE" "$EMBER_TITLE_IDLE" }
+_kindling_title_precmd() { _kindling_set_title "$KINDLING_TITLE_IDLE" "$KINDLING_TITLE_IDLE" }
 
-_ember_title_preexec() {
+_kindling_title_preexec() {
   emulate -L zsh
   setopt extended_glob
   # Strip a leading `sudo`/env assignment so the title shows the real command.
   local cmd=${2[(wr)^(*=*|sudo|ssh|-*)]}
   local line=${1[(w)1]}
-  _ember_set_title "${cmd:-$line}" "%~ | ${cmd:-$line}"
+  _kindling_set_title "${cmd:-$line}" "%~ | ${cmd:-$line}"
 }
 
 autoload -Uz add-zsh-hook
-if [[ ${EMBER_DISABLE_AUTO_TITLE:-0} -ne 1 ]]; then
-  add-zsh-hook precmd  _ember_title_precmd
-  add-zsh-hook preexec _ember_title_preexec
+if [[ ${KINDLING_DISABLE_AUTO_TITLE:-0} -ne 1 ]]; then
+  add-zsh-hook precmd  _kindling_title_precmd
+  add-zsh-hook preexec _kindling_title_preexec
 fi
 
 # OSC 7: tell the terminal the working directory so new tabs/splits inherit it.
 # Supported by iTerm2, WezTerm, Ghostty, Kitty, GNOME Terminal, Windows Terminal.
-_ember_osc7() {
+_kindling_osc7() {
   emulate -L zsh
   local encoded="" char hex
   local LC_ALL=C
@@ -54,4 +54,4 @@ _ember_osc7() {
   done
   printf '\e]7;file://%s%s\e\\' "${HOST}" "$encoded"
 }
-[[ -n $TERM && $TERM != dumb && $TERM != linux ]] && add-zsh-hook precmd _ember_osc7
+[[ -n $TERM && $TERM != dumb && $TERM != linux ]] && add-zsh-hook precmd _kindling_osc7

@@ -9,16 +9,16 @@ unsetopt flow_control
 
 zmodload -i zsh/complist
 
-: ${EMBER_COMPDUMP:="$EMBER_CACHE/zcompdump-${ZSH_VERSION}"}
+: ${KINDLING_COMPDUMP:="$KINDLING_CACHE/zcompdump-${ZSH_VERSION}"}
 
-# _ember_init_completion — called once by the loader after all plugins have
+# _kindling_init_completion — called once by the loader after all plugins have
 # adjusted fpath. compinit's security audit (-i) and dump rebuild are the two
 # slowest parts of a typical zsh startup, so we only do the full check once a
 # day and keep a zcompile'd dump around the rest of the time.
-_ember_init_completion() {
+_kindling_init_completion() {
   autoload -Uz compinit
 
-  local dump=$EMBER_COMPDUMP
+  local dump=$KINDLING_COMPDUMP
   # glob qualifier N.mh-24 => exists, plain file, modified < 24 hours ago
   if [[ -n ${dump}(#qN.mh-24) ]]; then
     compinit -C -d "$dump"        # -C: trust the dump, skip the audit
@@ -38,7 +38,7 @@ _ember_init_completion() {
 zstyle ':completion:*' menu select
 zstyle ':completion:*' verbose yes
 zstyle ':completion:*' use-cache yes
-zstyle ':completion:*' cache-path "$EMBER_CACHE/zcompcache"
+zstyle ':completion:*' cache-path "$KINDLING_CACHE/zcompcache"
 zstyle ':completion:*' list-colors ${(s.:.)LS_COLORS}
 zstyle ':completion:*' special-dirs true
 zstyle ':completion:*' squeeze-slashes true

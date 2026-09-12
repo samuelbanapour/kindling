@@ -1,6 +1,6 @@
 # themes/quill — single line, generous spacing, git on the right.
 #
-#   ~/code/ember                                 main ~1 ⇡1
+#   ~/code/kindling                                 main ~1 ⇡1
 #   ❯ git status
 #
 # A blank line before each prompt makes long output much easier to scan back
@@ -9,38 +9,38 @@
 setopt prompt_subst
 autoload -Uz add-zsh-hook
 
-: ${EMBER_QUILL_SYMBOL:=${EMBER_GLYPH[prompt]}}
+: ${KINDLING_QUILL_SYMBOL:=${KINDLING_GLYPH[prompt]}}
 
-_ember_quill_git() {
+_kindling_quill_git() {
   local branch flags out
-  branch=$(ember_git_branch) || return 0
-  flags=$(ember_git_status) || return 0
+  branch=$(kindling_git_branch) || return 0
+  flags=$(kindling_git_status) || return 0
   out="%F{242}${branch}%f"
   local f
   for f in ${=flags}; do
     case $f in
-      (conflict)  out+=" %F{red}${EMBER_GLYPH[conflict]}%f" ;;
-      (dirty|staged) out+=" %F{yellow}${EMBER_GLYPH[on]}%f" ;;
-      (untracked) out+=" %F{242}${EMBER_GLYPH[off]}%f" ;;
-      (ahead:*)   out+=" %F{cyan}${EMBER_GLYPH[ahead]}${f#ahead:}%f" ;;
-      (behind:*)  out+=" %F{cyan}${EMBER_GLYPH[behind]}${f#behind:}%f" ;;
+      (conflict)  out+=" %F{red}${KINDLING_GLYPH[conflict]}%f" ;;
+      (dirty|staged) out+=" %F{yellow}${KINDLING_GLYPH[on]}%f" ;;
+      (untracked) out+=" %F{242}${KINDLING_GLYPH[off]}%f" ;;
+      (ahead:*)   out+=" %F{cyan}${KINDLING_GLYPH[ahead]}${f#ahead:}%f" ;;
+      (behind:*)  out+=" %F{cyan}${KINDLING_GLYPH[behind]}${f#behind:}%f" ;;
     esac
   done
   # Collapse the duplicate dot that dirty+staged would otherwise produce.
-  local dot=${EMBER_GLYPH[on]}
+  local dot=${KINDLING_GLYPH[on]}
   print -rn -- "${out/ %F\{yellow\}${dot}%f %F\{yellow\}${dot}%f/ %F\{yellow\}${dot}%f}"
 }
 
-_ember_quill_precmd() {
-  ember_async quill_git '_ember_quill_git' "$PWD"
+_kindling_quill_precmd() {
+  kindling_async quill_git '_kindling_quill_git' "$PWD"
 
   local color=magenta
-  (( EMBER_LAST_STATUS != 0 )) && color=red
+  (( KINDLING_LAST_STATUS != 0 )) && color=red
 
   local venv=""
   [[ -n $VIRTUAL_ENV ]] && venv="%F{242}(${VIRTUAL_ENV:t})%f "
 
-  PROMPT=$'\n'"%F{blue}%~%f"$'\n'"${venv}%F{${color}}${EMBER_QUILL_SYMBOL}%f "
-  RPROMPT="${EMBER_ASYNC_RESULT[quill_git]}"
+  PROMPT=$'\n'"%F{blue}%~%f"$'\n'"${venv}%F{${color}}${KINDLING_QUILL_SYMBOL}%f "
+  RPROMPT="${KINDLING_ASYNC_RESULT[quill_git]}"
 }
-add-zsh-hook precmd _ember_quill_precmd
+add-zsh-hook precmd _kindling_quill_precmd

@@ -13,7 +13,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  # The suite, on both platforms. macOS is where Ember is developed; Linux is
+  # The suite, on both platforms. macOS is where Kindling is developed; Linux is
   # where its OS-conditional paths (the macos plugin, GNU vs BSD ls) are
   # actually exercised rather than assumed.
   test:
@@ -44,16 +44,16 @@ jobs:
           set -eu
           HOME_DIR="$(mktemp -d)"
           cat > "$HOME_DIR/.zshrc" <<EOF
-          export EMBER="$PWD"
-          ember_plugins=(git jump zline extract node python macos docker)
-          EMBER_THEME=spark
-          source "\$EMBER/ember.zsh"
+          export KINDLING="$PWD"
+          kindling_plugins=(git jump zline extract node python macos docker)
+          KINDLING_THEME=spark
+          source "\$KINDLING/kindling.zsh"
           EOF
           # An interactive shell must produce no diagnostics at all. Anything on
           # stderr here is a plugin failing to load on this platform.
           out=$(HOME="$HOME_DIR" XDG_CACHE_HOME="$HOME_DIR/c" \
                 XDG_DATA_HOME="$HOME_DIR/d" XDG_STATE_HOME="$HOME_DIR/s" \
-                zsh -i -c 'ember doctor' 2>&1)
+                zsh -i -c 'kindling doctor' 2>&1)
           printf '%s\n' "$out"
           printf '%s\n' "$out" | grep -q 'no problems found'
 
@@ -98,8 +98,8 @@ jobs:
       - uses: actions/checkout@v4
       - name: Lint the formula
         run: |
-          if [ -f Formula/ember.rb ]; then
-            brew style --formula Formula/ember.rb
+          if [ -f Formula/kindling.rb ]; then
+            brew style --formula Formula/kindling.rb
           else
             echo "no formula in this repo; the tap holds it"
           fi

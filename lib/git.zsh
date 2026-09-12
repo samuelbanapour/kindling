@@ -2,17 +2,17 @@
 # Themes call these on every prompt, so each one is a single git invocation at
 # most and every result is cached against the repository's index mtime.
 
-typeset -gA _ember_git_cache
+typeset -gA _kindling_git_cache
 
-# ember_git_root — top level of the repo containing $PWD, or empty.
-ember_git_root() {
+# kindling_git_root — top level of the repo containing $PWD, or empty.
+kindling_git_root() {
   local root
   root=$(command git rev-parse --show-toplevel 2>/dev/null) || return 1
   print -r -- "$root"
 }
 
-# ember_git_branch — branch name, or a short sha when detached, or empty.
-ember_git_branch() {
+# kindling_git_branch — branch name, or a short sha when detached, or empty.
+kindling_git_branch() {
   local ref
   ref=$(command git symbolic-ref --quiet --short HEAD 2>/dev/null) && {
     print -r -- "$ref"; return 0
@@ -21,10 +21,10 @@ ember_git_branch() {
   print -r -- "@$ref"
 }
 
-# ember_git_status — one word per condition, space separated:
+# kindling_git_status — one word per condition, space separated:
 #   dirty staged untracked stash ahead:N behind:N conflict
 # A single `git status --porcelain=v2 --branch` call answers all of it.
-ember_git_status() {
+kindling_git_status() {
   local -a flags
   local line ahead=0 behind=0
   local dirty=0 staged=0 untracked=0 conflict=0
@@ -62,8 +62,8 @@ ember_git_status() {
   print -r -- "${flags[*]}"
 }
 
-# ember_git_default_branch — main, master, trunk, whatever origin says.
-ember_git_default_branch() {
+# kindling_git_default_branch — main, master, trunk, whatever origin says.
+kindling_git_default_branch() {
   local b
   b=$(command git symbolic-ref --quiet --short refs/remotes/origin/HEAD 2>/dev/null) \
     && { print -r -- "${b#origin/}"; return 0 }

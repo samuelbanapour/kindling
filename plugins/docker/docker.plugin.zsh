@@ -14,19 +14,19 @@ alias drmi='docker rmi'
 # compose is a subcommand in v2 and a separate binary in v1. Asking docker
 # which it is costs ~20ms — it talks to the daemon — so resolve it on first
 # use and remember the answer, instead of paying for it in every shell.
-typeset -g _ember_dc=""
+typeset -g _kindling_dc=""
 dc() {
-  if [[ -z $_ember_dc ]]; then
+  if [[ -z $_kindling_dc ]]; then
     if command docker compose version >/dev/null 2>&1; then
-      _ember_dc="docker compose"
+      _kindling_dc="docker compose"
     elif (( $+commands[docker-compose] )); then
-      _ember_dc="docker-compose"
+      _kindling_dc="docker-compose"
     else
       print -ru2 -- "dc: no docker compose available"
       return 1
     fi
   fi
-  ${=_ember_dc} "$@"
+  ${=_kindling_dc} "$@"
 }
 
 dcu() { dc up --detach "$@" }
@@ -37,13 +37,13 @@ dcb() { dc build "$@" }
 
 # dsh <container> — shell into a container, preferring bash then sh.
 dsh() {
-  local container=${1:-$(_ember_docker_pick)}
+  local container=${1:-$(_kindling_docker_pick)}
   [[ -z $container ]] && return 1
   docker exec -it "$container" bash 2>/dev/null ||
     docker exec -it "$container" sh
 }
 
-_ember_docker_pick() {
+_kindling_docker_pick() {
   if (( $+commands[fzf] )); then
     docker ps --format '{{.Names}}' | fzf --height 40% --reverse --prompt='container> '
   else

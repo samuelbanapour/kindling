@@ -6,25 +6,25 @@ bindkey -e
 # Make sure terminfo-based keys work both inside and outside application mode.
 autoload -Uz add-zle-hook-widget 2>/dev/null
 if (( ${+terminfo[smkx]} && ${+terminfo[rmkx]} )); then
-  _ember_zle_line_init()   { echoti smkx }
-  _ember_zle_line_finish() { echoti rmkx }
-  zle -N zle-line-init _ember_zle_line_init
-  zle -N zle-line-finish _ember_zle_line_finish
+  _kindling_zle_line_init()   { echoti smkx }
+  _kindling_zle_line_finish() { echoti rmkx }
+  zle -N zle-line-init _kindling_zle_line_init
+  zle -N zle-line-finish _kindling_zle_line_finish
 fi
 
-# _ember_bind <terminfo-cap> <fallback-seq> <widget>
-_ember_bind() {
+# _kindling_bind <terminfo-cap> <fallback-seq> <widget>
+_kindling_bind() {
   local cap=$1 fallback=$2 widget=$3
   [[ -n ${terminfo[$cap]} ]] && bindkey -- "${terminfo[$cap]}" "$widget"
   [[ -n $fallback ]] && bindkey -- "$fallback" "$widget"
 }
 
-_ember_bind khome '^[[H'  beginning-of-line
-_ember_bind kend  '^[[F'  end-of-line
-_ember_bind kdch1 '^[[3~' delete-char
-_ember_bind kich1 '^[[2~' overwrite-mode
-_ember_bind kpp   ''      up-line-or-history      # PageUp
-_ember_bind knp   ''      down-line-or-history    # PageDown
+_kindling_bind khome '^[[H'  beginning-of-line
+_kindling_bind kend  '^[[F'  end-of-line
+_kindling_bind kdch1 '^[[3~' delete-char
+_kindling_bind kich1 '^[[2~' overwrite-mode
+_kindling_bind kpp   ''      up-line-or-history      # PageUp
+_kindling_bind knp   ''      down-line-or-history    # PageDown
 
 # Alt-Left / Alt-Right move by word in every terminal that matters.
 bindkey '^[[1;3D' backward-word
@@ -39,8 +39,8 @@ bindkey '^[f'     forward-word
 autoload -Uz up-line-or-beginning-search down-line-or-beginning-search
 zle -N up-line-or-beginning-search
 zle -N down-line-or-beginning-search
-_ember_bind kcuu1 '^[[A' up-line-or-beginning-search
-_ember_bind kcud1 '^[[B' down-line-or-beginning-search
+_kindling_bind kcuu1 '^[[A' up-line-or-beginning-search
+_kindling_bind kcud1 '^[[B' down-line-or-beginning-search
 bindkey '^P' up-line-or-beginning-search
 bindkey '^N' down-line-or-beginning-search
 
@@ -61,18 +61,18 @@ autoload -Uz url-quote-magic
 zle -N self-insert url-quote-magic
 
 # ^Z toggles: suspend a job, then ^Z again to bring it back.
-_ember_fg_toggle() {
+_kindling_fg_toggle() {
   if [[ $#BUFFER -eq 0 ]]; then
     BUFFER='fg'; zle accept-line
   else
     zle push-input; zle clear-screen
   fi
 }
-zle -N _ember_fg_toggle
-bindkey '^Z' _ember_fg_toggle
+zle -N _kindling_fg_toggle
+bindkey '^Z' _kindling_fg_toggle
 
 # Alt-S prefixes the line with sudo (press again to remove it).
-_ember_sudo_toggle() {
+_kindling_sudo_toggle() {
   [[ -z $BUFFER ]] && LBUFFER="$(fc -ln -1)"
   if [[ $BUFFER == sudo\ * ]]; then
     BUFFER=${BUFFER#sudo }; (( CURSOR -= 5 ))
@@ -80,5 +80,5 @@ _ember_sudo_toggle() {
     BUFFER="sudo $BUFFER"; (( CURSOR += 5 ))
   fi
 }
-zle -N _ember_sudo_toggle
-bindkey '^[s' _ember_sudo_toggle
+zle -N _kindling_sudo_toggle
+bindkey '^[s' _kindling_sudo_toggle

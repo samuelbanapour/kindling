@@ -15,11 +15,11 @@ alias deact='deactivate'
 
 # Auto-activate on cd, and deactivate on the way out. Only ever touches a venv
 # it activated itself, so a manually activated environment survives a cd.
-typeset -g _ember_auto_venv=""
+typeset -g _kindling_auto_venv=""
 
-_ember_venv_hook() {
+_kindling_venv_hook() {
   emulate -L zsh
-  [[ ${EMBER_PYTHON_AUTOVENV:-1} == 1 ]] || return 0
+  [[ ${KINDLING_PYTHON_AUTOVENV:-1} == 1 ]] || return 0
 
   # Declared up front: re-running `local` on a parameter that already has a
   # value makes zsh print it, which would spray the venv search across stdout.
@@ -31,25 +31,25 @@ _ember_venv_hook() {
     dir=${dir:h}
   done
 
-  if [[ -n $found && $found != $_ember_auto_venv ]]; then
-    [[ -n $VIRTUAL_ENV && -n $_ember_auto_venv ]] && deactivate 2>/dev/null
+  if [[ -n $found && $found != $_kindling_auto_venv ]]; then
+    [[ -n $VIRTUAL_ENV && -n $_kindling_auto_venv ]] && deactivate 2>/dev/null
     source "$found/bin/activate"
-    _ember_auto_venv=$found
-  elif [[ -z $found && -n $_ember_auto_venv ]]; then
+    _kindling_auto_venv=$found
+  elif [[ -z $found && -n $_kindling_auto_venv ]]; then
     deactivate 2>/dev/null
-    _ember_auto_venv=""
+    _kindling_auto_venv=""
   fi
 }
 autoload -Uz add-zsh-hook
-add-zsh-hook chpwd _ember_venv_hook
-_ember_venv_hook
+add-zsh-hook chpwd _kindling_venv_hook
+_kindling_venv_hook
 
 # The theme renders the venv itself; stop the activate script duplicating it.
 export VIRTUAL_ENV_DISABLE_PROMPT=1
 
 # pyenv and poetry are both slow to initialize — defer them.
 if (( $+commands[pyenv] )); then
-  ember_lazy pyenv -- 'eval "$(command pyenv init -)"'
+  kindling_lazy pyenv -- 'eval "$(command pyenv init -)"'
 fi
 
 # pyclean — drop __pycache__ and friends under the current tree.

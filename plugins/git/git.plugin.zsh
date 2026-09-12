@@ -52,14 +52,14 @@ alias glo='git log --oneline --decorate --graph'
 # gcd — jump to the repository root from anywhere inside it.
 gcd() {
   local root
-  root=$(ember_git_root) || { print -ru2 -- "not a git repository"; return 1 }
+  root=$(kindling_git_root) || { print -ru2 -- "not a git repository"; return 1 }
   cd -- "$root"
 }
 
 # gmain — switch to the repo's default branch and update it.
 gmain() {
   local b
-  b=$(ember_git_default_branch) || { print -ru2 -- "no default branch found"; return 1 }
+  b=$(kindling_git_default_branch) || { print -ru2 -- "no default branch found"; return 1 }
   git switch "$b" && git pull --ff-only
 }
 

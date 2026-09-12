@@ -6,46 +6,46 @@
 # a worker computes the real answer in the background, and the prompt is
 # redrawn in place when the answer lands.
 #
-# Set EMBER_ASYNC=0 to compute synchronously instead.
+# Set KINDLING_ASYNC=0 to compute synchronously instead.
 
-: ${EMBER_ASYNC:=1}
-typeset -g EMBER_ASYNC
+: ${KINDLING_ASYNC:=1}
+typeset -g KINDLING_ASYNC
 
-typeset -gA _ember_async_pid _ember_async_out _ember_async_ctx
-typeset -gA EMBER_ASYNC_RESULT
+typeset -gA _kindling_async_pid _kindling_async_out _kindling_async_ctx
+typeset -gA KINDLING_ASYNC_RESULT
 
 zmodload zsh/system 2>/dev/null
 
-# _ember_prompt_refresh — redraw the prompt without disturbing the line being
+# _kindling_prompt_refresh — redraw the prompt without disturbing the line being
 # edited. Safe to call from a trap.
-_ember_prompt_refresh() {
+_kindling_prompt_refresh() {
   [[ -o zle ]] || return 0
   zle && zle reset-prompt 2>/dev/null
 }
 
-# ember_async <id> <code> [context]
+# kindling_async <id> <code> [context]
 #   Runs <code> in a background shell. Its stdout becomes
-#   EMBER_ASYNC_RESULT[<id>] once it finishes. <context> is any string
+#   KINDLING_ASYNC_RESULT[<id>] once it finishes. <context> is any string
 #   identifying what the result is about — usually $PWD. A result whose
 #   context no longer matches the current one is discarded, so a slow answer
 #   for the directory you just left can never overwrite the right one.
-ember_async() {
+kindling_async() {
   local id=$1 code=$2 ctx=${3:-$PWD}
 
-  if (( ! EMBER_ASYNC )); then
-    EMBER_ASYNC_RESULT[$id]="$(eval "$code" 2>/dev/null)"
+  if (( ! KINDLING_ASYNC )); then
+    KINDLING_ASYNC_RESULT[$id]="$(eval "$code" 2>/dev/null)"
     return 0
   fi
 
   # Supersede a worker that's still running for the same id.
-  if [[ -n ${_ember_async_pid[$id]} ]]; then
-    kill -TERM ${_ember_async_pid[$id]} 2>/dev/null
-    wait ${_ember_async_pid[$id]} 2>/dev/null
+  if [[ -n ${_kindling_async_pid[$id]} ]]; then
+    kill -TERM ${_kindling_async_pid[$id]} 2>/dev/null
+    wait ${_kindling_async_pid[$id]} 2>/dev/null
   fi
 
-  local out="$EMBER_CACHE/async.$id.$$"
-  _ember_async_out[$id]=$out
-  _ember_async_ctx[$id]=$ctx
+  local out="$KINDLING_CACHE/async.$id.$$"
+  _kindling_async_out[$id]=$out
+  _kindling_async_ctx[$id]=$ctx
 
   # $$ inside the subshell is still the parent's pid, which is what we signal.
   local parent=$$
@@ -53,7 +53,7 @@ ember_async() {
     eval "$code" >| "$out" 2>/dev/null
     kill -USR1 $parent 2>/dev/null
   } &!
-  _ember_async_pid[$id]=$!
+  _kindling_async_pid[$id]=$!
 }
 
 # Collect every finished worker. USR1 is the wake-up; the actual handoff is
@@ -61,31 +61,31 @@ ember_async() {
 TRAPUSR1() {
   local id out
   local -i changed=0
-  for id in ${(k)_ember_async_out}; do
-    out=${_ember_async_out[$id]}
+  for id in ${(k)_kindling_async_out}; do
+    out=${_kindling_async_out[$id]}
     [[ -f $out ]] || continue
-    if [[ -z ${_ember_async_ctx[$id]} || ${_ember_async_ctx[$id]} == $PWD ]]; then
-      EMBER_ASYNC_RESULT[$id]="$(<$out)"
+    if [[ -z ${_kindling_async_ctx[$id]} || ${_kindling_async_ctx[$id]} == $PWD ]]; then
+      KINDLING_ASYNC_RESULT[$id]="$(<$out)"
       changed=1
     fi
     command rm -f -- "$out"
-    unset "_ember_async_out[$id]" "_ember_async_pid[$id]" "_ember_async_ctx[$id]"
+    unset "_kindling_async_out[$id]" "_kindling_async_pid[$id]" "_kindling_async_ctx[$id]"
   done
-  (( changed )) && _ember_prompt_refresh
+  (( changed )) && _kindling_prompt_refresh
 }
 
 # Discard pending results when the directory changes — they're about the old one.
-_ember_async_reset() {
+_kindling_async_reset() {
   local id
-  for id in ${(k)_ember_async_pid}; do
-    kill -TERM ${_ember_async_pid[$id]} 2>/dev/null
+  for id in ${(k)_kindling_async_pid}; do
+    kill -TERM ${_kindling_async_pid[$id]} 2>/dev/null
   done
-  _ember_async_pid=() _ember_async_out=() _ember_async_ctx=()
-  EMBER_ASYNC_RESULT=()
+  _kindling_async_pid=() _kindling_async_out=() _kindling_async_ctx=()
+  KINDLING_ASYNC_RESULT=()
 }
 autoload -Uz add-zsh-hook
-add-zsh-hook chpwd _ember_async_reset
+add-zsh-hook chpwd _kindling_async_reset
 
 # Clean up any files a killed shell left behind.
-_ember_async_cleanup() { command rm -f -- "$EMBER_CACHE"/async.*.$$(N) }
-add-zsh-hook zshexit _ember_async_cleanup
+_kindling_async_cleanup() { command rm -f -- "$KINDLING_CACHE"/async.*.$$(N) }
+add-zsh-hook zshexit _kindling_async_cleanup

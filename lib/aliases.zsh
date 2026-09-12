@@ -95,7 +95,7 @@ take() {
     (*.tar.gz|*.tgz|*.tar.bz2|*.tar.xz|*.tar|*.zip)
       # Unpacking lives in the extract plugin, which may not be enabled.
       if (( ! $+functions[extract] )); then
-        print -ru2 -- "take: unpacking needs the extract plugin (ember enable extract)"
+        print -ru2 -- "take: unpacking needs the extract plugin (kindling enable extract)"
         return 1
       fi
       local dir=${${arg:t}%%.*}

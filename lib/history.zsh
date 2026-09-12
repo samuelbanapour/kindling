@@ -7,12 +7,12 @@
 # So: assign, don't default — and give the user explicit variables to override.
 #
 # HISTFILE is the exception. If something already chose one, keep it: moving
-# the file would hide the history you already have. Ember's own XDG location is
+# the file would hide the history you already have. Kindling's own XDG location is
 # only used when nothing else has picked a path.
-: ${EMBER_HISTFILE:=${HISTFILE:-${XDG_STATE_HOME:-$HOME/.local/state}/ember/history}}
-HISTFILE=$EMBER_HISTFILE
-HISTSIZE=${EMBER_HISTSIZE:-100000}
-SAVEHIST=${EMBER_SAVEHIST:-100000}
+: ${KINDLING_HISTFILE:=${HISTFILE:-${XDG_STATE_HOME:-$HOME/.local/state}/kindling/history}}
+HISTFILE=$KINDLING_HISTFILE
+HISTSIZE=${KINDLING_HISTSIZE:-100000}
+SAVEHIST=${KINDLING_SAVEHIST:-100000}
 [[ -d ${HISTFILE:h} ]] || command mkdir -p "${HISTFILE:h}"
 
 setopt extended_history        # record timestamp + duration
@@ -29,14 +29,14 @@ setopt hist_verify             # !! expands for review instead of running
 : ${HISTORY_IGNORE:='(ls|ll|la|cd|cd ..|pwd|exit|clear|c|h|history|* --help|* -h)'}
 
 # Never persist a line that looks like it carries a credential.
-_ember_history_filter() {
+_kindling_history_filter() {
   # zshaddhistory: return 1 to discard the line.
   local line=${1%%$'\n'}
   [[ $line == *(PASSWORD|SECRET|TOKEN|API_KEY|ACCESS_KEY)=* ]] && return 1
   return 0
 }
 autoload -Uz add-zsh-hook
-add-zsh-hook zshaddhistory _ember_history_filter
+add-zsh-hook zshaddhistory _kindling_history_filter
 
 alias h='history'
 # `hgrep <pattern>` — search history without the fc incantation.
