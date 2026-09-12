@@ -20,6 +20,42 @@ setopt correct                # ...but do correct command names
 # most punctuation, which makes deleting a path component impossible.
 WORDCHARS='*?_-.[]~&;!#$%^(){}<>'
 
+# --- can this terminal actually render non-ASCII? ----------------------------
+# LANG is unset more often than you would think: ssh sessions that don't
+# forward it, cron, minimal containers, and any terminal whose "set locale on
+# startup" box is unchecked. Drawing a U+276F prompt character there produces
+# mojibake, and padding a string with one produces broken bytes, because zsh
+# counts a multibyte character as three under LC_CTYPE=C.
+#
+# The test avoids the (#i) glob flag on purpose: extended_glob is not set yet
+# at this point in the load order, so (#i) would be matched as literal text and
+# every UTF-8 locale would be reported as ASCII.
+typeset -g _ember_locale=${LC_ALL:-${LC_CTYPE:-${LANG:-}}}
+if [[ ${_ember_locale:l} == *utf*8* ]]; then
+  typeset -g EMBER_UTF8=1
+else
+  typeset -g EMBER_UTF8=0
+fi
+unset _ember_locale
+
+# Decorative characters, resolved once. A function returning these through
+# command substitution would fork — per glyph, per prompt — which is precisely
+# the cost this framework exists to avoid.
+typeset -gA EMBER_GLYPH
+if (( EMBER_UTF8 )); then
+  EMBER_GLYPH=(
+    prompt '❯'  continue '…'  ok '✓'     fail '✗'    warn '!'
+    ahead  '⇡'  behind   '⇣'  job '⚙'    conflict '✖'
+    on     '●'  off      '○'  bar '█'    sep $'\ue0b0'
+  )
+else
+  EMBER_GLYPH=(
+    prompt '>'  continue '...' ok '+'    fail 'x'    warn '!'
+    ahead  '^'  behind   'v'   job '&'   conflict '!'
+    on     '*'  off      '-'   bar '#'   sep ''
+  )
+fi
+
 # Capture the exit status before any other precmd hook can clobber it.
 # Registered from the first library loaded, so it always runs first and every
 # theme can read EMBER_LAST_STATUS instead of racing for `$?`.

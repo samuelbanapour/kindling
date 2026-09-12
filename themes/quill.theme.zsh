@@ -9,7 +9,7 @@
 setopt prompt_subst
 autoload -Uz add-zsh-hook
 
-: ${EMBER_QUILL_SYMBOL:='❯'}
+: ${EMBER_QUILL_SYMBOL:=${EMBER_GLYPH[prompt]}}
 
 _ember_quill_git() {
   local branch flags out
@@ -19,15 +19,16 @@ _ember_quill_git() {
   local f
   for f in ${=flags}; do
     case $f in
-      (conflict)  out+=' %F{red}✖%f' ;;
-      (dirty|staged) out+=' %F{yellow}●%f' ;;
-      (untracked) out+=' %F{242}○%f' ;;
-      (ahead:*)   out+=" %F{cyan}⇡${f#ahead:}%f" ;;
-      (behind:*)  out+=" %F{cyan}⇣${f#behind:}%f" ;;
+      (conflict)  out+=" %F{red}${EMBER_GLYPH[conflict]}%f" ;;
+      (dirty|staged) out+=" %F{yellow}${EMBER_GLYPH[on]}%f" ;;
+      (untracked) out+=" %F{242}${EMBER_GLYPH[off]}%f" ;;
+      (ahead:*)   out+=" %F{cyan}${EMBER_GLYPH[ahead]}${f#ahead:}%f" ;;
+      (behind:*)  out+=" %F{cyan}${EMBER_GLYPH[behind]}${f#behind:}%f" ;;
     esac
   done
   # Collapse the duplicate dot that dirty+staged would otherwise produce.
-  print -rn -- "${out/ %F\{yellow\}●%f %F\{yellow\}●%f/ %F\{yellow\}●%f}"
+  local dot=${EMBER_GLYPH[on]}
+  print -rn -- "${out/ %F\{yellow\}${dot}%f %F\{yellow\}${dot}%f/ %F\{yellow\}${dot}%f}"
 }
 
 _ember_quill_precmd() {

@@ -166,7 +166,19 @@ command -v git >/dev/null 2>&1 || warn "git not found — the git plugin and 'em
 # --- place the files ---------------------------------------------------------
 step "Installing to $EMBER_DIR"
 
-if [ -e "$EMBER_DIR" ]; then
+# Running the installer from inside the directory you're installing to means
+# there is nothing to copy and nothing to update: use the checkout in place.
+# That keeps a single copy, so edits to the repo take effect in the next shell,
+# which is what you want when you are working on Ember rather than using it.
+# This has to be decided before the "already exists" handling below, or that
+# would try to pull the very checkout the installer is running from.
+IN_PLACE=0
+if [ "$SOURCE_DIR" = "$EMBER_DIR" ]; then
+  IN_PLACE=1
+  ok "installing in place from $EMBER_DIR (nothing copied)"
+fi
+
+if [ "$IN_PLACE" = 0 ] && [ -e "$EMBER_DIR" ]; then
   if [ -d "$EMBER_DIR/.git" ]; then
     warn "$EMBER_DIR already exists — updating it instead"
     run git -C "$EMBER_DIR" pull --ff-only || warn "could not fast-forward; leaving it as is"
@@ -179,7 +191,7 @@ if [ -e "$EMBER_DIR" ]; then
   fi
 fi
 
-if [ ! -e "$EMBER_DIR" ]; then
+if [ "$IN_PLACE" = 0 ] && [ ! -e "$EMBER_DIR" ]; then
   # Installing from a local copy (this repo) is the normal case when you ran
   # install.sh out of a clone; cloning is for the curl-to-sh path.
   if [ -f "$SOURCE_DIR/ember.zsh" ]; then
@@ -274,7 +286,10 @@ if [ "$TOUCH_ZSHRC" = 1 ]; then
           printf '  export EMBER="%s"\n' "$EMBER_DIR"
           printf '  ember_plugins=(git jump zline extract)\n'
           printf '  EMBER_THEME=spark\n'
-          printf '  source "$EMBER/ember.zsh"\n'
+          printf '  # Guarded so a missing $EMBER (an unmounted drive, a moved\n'
+          printf '  # checkout) costs you a plain shell, not an error on every\n'
+          printf '  # prompt and a broken login.\n'
+          printf '  [ -r "$EMBER/ember.zsh" ] && source "$EMBER/ember.zsh"\n'
           printf 'fi\n'
           printf '# --- end Ember -----------------------------------------------------------\n'
         } >> "$ZSHRC"

@@ -9,7 +9,7 @@
 setopt prompt_subst
 autoload -Uz add-zsh-hook
 
-: ${EMBER_SPARK_SYMBOL:='❯'}
+: ${EMBER_SPARK_SYMBOL:=${EMBER_GLYPH[prompt]}}
 : ${EMBER_SPARK_SYMBOL_ROOT:='#'}
 : ${EMBER_SPARK_COLOR_OK:=magenta}
 : ${EMBER_SPARK_COLOR_ERR:=red}
@@ -40,8 +40,8 @@ _ember_spark_render_git() {
       (dirty)     marks+=('%F{yellow}~%f') ;;
       (untracked) marks+=('%F{blue}?%f') ;;
       (stash)     marks+=('%F{cyan}*%f') ;;
-      (ahead:*)   marks+=("%F{cyan}⇡${f#ahead:}%f") ;;
-      (behind:*)  marks+=("%F{cyan}⇣${f#behind:}%f") ;;
+      (ahead:*)   marks+=("%F{cyan}${EMBER_GLYPH[ahead]}${f#ahead:}%f") ;;
+      (behind:*)  marks+=("%F{cyan}${EMBER_GLYPH[behind]}${f#behind:}%f") ;;
     esac
   done
 
@@ -101,9 +101,9 @@ _ember_spark_precmd() {
 
   # --- right ---
   local -a right
-  (( last_status != 0 )) && right+=("%F{red}✗ ${last_status}%f")
+  (( last_status != 0 )) && right+=("%F{red}${EMBER_GLYPH[fail]} ${last_status}%f")
   [[ -n $_ember_spark_elapsed ]] && right+=("%F{yellow}${_ember_spark_elapsed}%f")
-  (( ${#jobstates} )) && right+=("%F{magenta}⚙ ${#jobstates}%f")
+  (( ${#jobstates} )) && right+=("%F{magenta}${EMBER_GLYPH[job]} ${#jobstates}%f")
 
   local symbol_color=${EMBER_SPARK_COLOR_OK}
   (( last_status != 0 )) && symbol_color=${EMBER_SPARK_COLOR_ERR}
@@ -112,7 +112,7 @@ _ember_spark_precmd() {
 
   PROMPT="${(j: :)left}"$'\n'"%F{${symbol_color}}${symbol}%f "
   RPROMPT="${(j: :)right}"
-  PROMPT2="%F{${symbol_color}}…%f "
+  PROMPT2="%F{${symbol_color}}${EMBER_GLYPH[continue]}%f "
 }
 
 zmodload zsh/datetime

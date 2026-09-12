@@ -23,7 +23,9 @@ EMBER_THEME=spark
 # whatever your shell did before Ember. `ember on` removes it again.
 # If Ember ever breaks your shell:  touch ~/.ember-off
 if [ ! -f "$HOME/.ember-off" ]; then
-  source "$EMBER/ember.zsh"
+  # Guarded so a missing $EMBER — an unmounted drive, a moved checkout —
+  # costs you a plain shell rather than an error on every prompt.
+  [ -r "$EMBER/ember.zsh" ] && source "$EMBER/ember.zsh"
 fi
 
 # --- your configuration ------------------------------------------------------

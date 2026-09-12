@@ -13,10 +13,10 @@ _ember_bar_pad=' '
 # The powerline separator is only expressible in a UTF-8 locale; asking for it
 # under LC_CTYPE=C is a parse-time error, not a rendering glitch, so check
 # before reaching for it.
-if (( EMBER_BAR_PLAIN )) || [[ ${LC_ALL:-${LC_CTYPE:-${LANG:-C}}} != *(UTF|utf|Utf)* ]]; then
+if (( EMBER_BAR_PLAIN )); then
   _ember_bar_sep=''
 else
-  _ember_bar_sep=$'\ue0b0'
+  _ember_bar_sep=${EMBER_GLYPH[sep]}
 fi
 
 # _ember_bar_segment <bg> <fg> <text>
@@ -81,11 +81,11 @@ _ember_bar_precmd() {
   [[ -n $git ]] && line+=$(_ember_bar_segment "${git%%|*}" black "${git#*|}")
 
   (( EMBER_LAST_STATUS != 0 )) && \
-    line+=$(_ember_bar_segment red white "✗ ${EMBER_LAST_STATUS}")
+    line+=$(_ember_bar_segment red white "${EMBER_GLYPH[fail]} ${EMBER_LAST_STATUS}")
 
   line+=$(_ember_bar_close)
 
-  PROMPT="${line}"$'\n'"%F{blue}❯%f "
+  PROMPT="${line}"$'\n'"%F{blue}${EMBER_GLYPH[prompt]}%f "
   RPROMPT=""
 }
 add-zsh-hook precmd _ember_bar_precmd

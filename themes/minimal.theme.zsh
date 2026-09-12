@@ -7,7 +7,7 @@
 
 setopt prompt_subst
 
-: ${EMBER_MINIMAL_SYMBOL:='❯'}
+: ${EMBER_MINIMAL_SYMBOL:=${EMBER_GLYPH[prompt]}}
 
 _ember_minimal_precmd() {
   local color=cyan

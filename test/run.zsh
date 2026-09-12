@@ -99,8 +99,17 @@ check "sets EMBER_CACHE" \
 check "is idempotent when sourced twice" \
   "$(ember_sh "source '$EMBER_SRC/ember.zsh'; print -- \$EMBER_VERSION")" "1.0.0"
 
+# Install-method detection is tested against copies that are actually shaped
+# the right way, rather than against whatever the working tree happens to be.
+command cp -R "$EMBER_SRC" "$SANDBOX/plaincopy"
+command rm -rf "$SANDBOX/plaincopy/.git" "$SANDBOX/plaincopy/custom" "$SANDBOX/plaincopy/.ember-managed"
 check "detects a plain install" \
-  "$(ember_sh 'print -- $EMBER_INSTALL')" "plain"
+  "$(ember_sh_at "$SANDBOX/plaincopy" 'print -- $EMBER_INSTALL')" "plain"
+
+command cp -R "$SANDBOX/plaincopy" "$SANDBOX/gitcopy"
+command mkdir -p "$SANDBOX/gitcopy/.git"
+check "detects a git checkout" \
+  "$(ember_sh_at "$SANDBOX/gitcopy" 'print -- $EMBER_INSTALL')" "git"
 
 # The marker file is what a package manager drops in; custom/ must then live
 # outside the install directory, which the manager replaces on every upgrade.
@@ -120,8 +129,11 @@ check "a managed install puts custom/ under XDG_DATA_HOME" \
   "yes"
 
 check "a plain copy still uses \$EMBER/custom" \
-  "$(command cp -R "$EMBER_SRC" "$SANDBOX/plain" && command rm -rf "$SANDBOX/plain/.git"
-     ember_sh_at "$SANDBOX/plain" '[[ $EMBER_CUSTOM == $EMBER/custom ]] && print inside')" \
+  "$(ember_sh_at "$SANDBOX/plaincopy" '[[ $EMBER_CUSTOM == $EMBER/custom ]] && print inside')" \
+  "inside"
+
+check "a git checkout still uses \$EMBER/custom" \
+  "$(ember_sh_at "$SANDBOX/gitcopy" '[[ $EMBER_CUSTOM == $EMBER/custom ]] && print inside')" \
   "inside"
 
 check_contains "ember update sends a managed install to its package manager" \
@@ -472,6 +484,31 @@ check "bar falls back to ASCII separators outside UTF-8" \
   "$(LC_ALL=C EMBER_TEST_THEME=bar ember_sh 'print -- "[$_ember_bar_sep]"')" \
   "[]"
 
+# LANG is unset in plenty of real sessions; decoration must degrade, not
+# produce mojibake or fragments of a multibyte character.
+check "a UTF-8 locale is detected" \
+  "$(LC_ALL=en_US.UTF-8 ember_sh 'print -- $EMBER_UTF8')" "1"
+
+check "a C locale is detected" \
+  "$(LC_ALL=C ember_sh 'print -- $EMBER_UTF8')" "0"
+
+check "an unset locale is treated as ASCII" \
+  "$(ember_sh 'print -- $EMBER_UTF8' )" "0"
+
+check "glyphs are ASCII under a C locale" \
+  "$(LC_ALL=C ember_sh 'print -- "${EMBER_GLYPH[prompt]}${EMBER_GLYPH[ahead]}${EMBER_GLYPH[fail]}"')" \
+  ">^x"
+
+check "glyphs are pictorial under UTF-8" \
+  "$(LC_ALL=en_US.UTF-8 ember_sh 'print -- "${EMBER_GLYPH[prompt]}${EMBER_GLYPH[ahead]}${EMBER_GLYPH[fail]}"')" \
+  "❯⇡✗"
+
+check "the profile bar is not built by multibyte padding" \
+  "$(LC_ALL=C ember_sh 'print -- ${EMBER_GLYPH[bar]}')" "#"
+
+check "spark uses the ASCII prompt symbol under a C locale" \
+  "$(LC_ALL=C EMBER_TEST_THEME=spark ember_sh 'print -- $EMBER_SPARK_SYMBOL')" ">"
+
 # -----------------------------------------------------------------------------
 print -- "\ncross-platform"
 
@@ -581,6 +618,15 @@ OMZ
   check "switching back turns Ember on again" "$(installed_shell)" "1.0.0/0"
 
   HOME="$home" sh "$EMBER_SRC/install.sh" --dir "$home/.ember" --uninstall >/dev/null 2>&1
+  # $EMBER can go missing: an external drive unmounts, a checkout is moved.
+  # That must cost a plain shell, not a broken login.
+  command mv "$home/.ember" "$home/.ember-moved"
+  check "a missing \$EMBER leaves the shell usable" \
+    "$(HOME=$home XDG_CACHE_HOME=$SANDBOX/ic XDG_DATA_HOME=$SANDBOX/id \
+       zsh -i -c 'print -r -- alive' 2>&1 | tail -1)" \
+    "alive"
+  command mv "$home/.ember-moved" "$home/.ember"
+
   check "uninstall restores the .zshrc byte for byte" \
     "$(command diff -q "$SANDBOX/zshrc.original" "$home/.zshrc" >/dev/null && print identical)" \
     "identical"

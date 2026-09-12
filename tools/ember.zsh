@@ -70,9 +70,9 @@ _ember_cmd_list() {
     local p
     for p in $(_ember_all_plugins); do
       if (( ${ember_loaded_plugins[(I)$p]} )); then
-        _ember_mark "  %F{green}●%f" "$p"
+        _ember_mark "  %F{green}${EMBER_GLYPH[on]}%f" "$p"
       else
-        _ember_mark "  %F{8}○%f" "$p"
+        _ember_mark "  %F{8}${EMBER_GLYPH[off]}%f" "$p"
       fi
     done
   fi
@@ -82,9 +82,9 @@ _ember_cmd_list() {
     local t
     for t in $(_ember_all_themes); do
       if [[ $t == $EMBER_THEME ]]; then
-        _ember_mark "  %F{green}●%f" "$t"
+        _ember_mark "  %F{green}${EMBER_GLYPH[on]}%f" "$t"
       else
-        _ember_mark "  %F{8}○%f" "$t"
+        _ember_mark "  %F{8}${EMBER_GLYPH[off]}%f" "$t"
       fi
     done
   fi
@@ -292,7 +292,9 @@ _ember_cmd_update() {
 
 _ember_cmd_doctor() {
   local -i problems=0
-  local ok='  %F{green}✓%f' bad='  %F{red}✗%f' warn='  %F{yellow}!%f'
+  local ok="  %F{green}${EMBER_GLYPH[ok]}%f"
+  local bad="  %F{red}${EMBER_GLYPH[fail]}%f"
+  local warn="  %F{yellow}${EMBER_GLYPH[warn]}%f"
 
   print -P -- "%Bember $EMBER_VERSION%b"
   print -r  -- "  zsh ${ZSH_VERSION} (${ZSH_PATCHLEVEL:-unknown})"
@@ -430,7 +432,12 @@ _ember_cmd_profile() {
     # One block per 2ms, so the shape of the cost is visible at a glance.
     width=$(( ms / 2 ))
     (( width > 40 )) && width=40
-    printf '%8.1f ms  %-28s %s\n' "$ms" "$name" "${(l:$width::█:):-}"
+    # Built by repetition rather than ${(l:n::char:)}: under LC_CTYPE=C that
+    # padding counts a 3-byte block character as three, and emits a fragment
+    # of one at the end.
+    local block=${EMBER_GLYPH[bar]} bar=""
+    repeat $width bar+=$block
+    printf '%8.1f ms  %-28s %s\n' "$ms" "$name" "$bar"
   done
 }
 
