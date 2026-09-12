@@ -8,6 +8,27 @@ emulate -L zsh
 setopt pipe_fail
 
 typeset -g KINDLING_SRC=${${0:A:h}:h}
+
+# Every test runs in a `zsh -f` subshell, so zsh has to be findable by name.
+# Without this check a missing or shadowed zsh produces one confusing failure
+# per test instead of one clear message.
+if ! whence -p zsh >/dev/null 2>&1; then
+  print -ru2 -- "test: no 'zsh' on PATH — the suite spawns subshells by name."
+  print -ru2 -- "      Running under: ${ZSH_VERSION:-unknown}"
+  print -ru2 -- "      Add the zsh you want tested to PATH and run again."
+  exit 2
+fi
+
+# Warn when the zsh on PATH is not the one running this file: the results would
+# describe a different build from the one being reported.
+() {
+  local on_path=$(whence -p zsh)
+  local reported=$($on_path -c 'print -r -- $ZSH_VERSION' 2>/dev/null)
+  if [[ -n $reported && $reported != $ZSH_VERSION ]]; then
+    print -ru2 -- "test: warning — running under zsh $ZSH_VERSION but 'zsh' on PATH is $reported"
+    print -ru2 -- "      The subshell tests will exercise $reported."
+  fi
+}
 typeset -gi PASS=0 FAIL=0
 typeset -g SANDBOX
 

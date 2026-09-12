@@ -81,7 +81,13 @@ jobs:
           ./configure --prefix="$HOME/zsh" --with-tcsetpgrp >/dev/null
           make -j"$(nproc)" >/dev/null && make install >/dev/null
       - name: Run the suite
-        run: "$HOME/zsh/bin/zsh test/run.zsh"
+        # The built zsh has to be on PATH, not just invoked by path: the suite
+        # spawns `zsh` for each isolated test, and those subshells must be the
+        # version under test rather than whatever the runner ships.
+        run: |
+          export PATH="$HOME/zsh/bin:$PATH"
+          zsh --version
+          zsh test/run.zsh
 
   shell-lint:
     name: shellcheck install.sh
