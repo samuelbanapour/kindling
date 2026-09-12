@@ -30,6 +30,11 @@ fi
   fi
 }
 typeset -gi PASS=0 FAIL=0
+# Read the version out of the source rather than repeating it here: pinning it
+# in each assertion means every release is also a test edit.
+typeset -g VERSION
+VERSION=$(command sed -n 's/.*KINDLING_VERSION="\([^"]*\)".*/\1/p' "$KINDLING_SRC/kindling.zsh" | head -1)
+[[ -n $VERSION ]] || { print -ru2 -- "test: could not read KINDLING_VERSION"; exit 2 }
 typeset -g SANDBOX
 
 setup() {
@@ -112,13 +117,13 @@ print -- "core"
 setup
 
 check "loads without error" \
-  "$(kindling_sh 'print -- $KINDLING_VERSION')" "1.0.0"
+  "$(kindling_sh 'print -- $KINDLING_VERSION')" "$VERSION"
 
 check "sets KINDLING_CACHE" \
   "$(kindling_sh '[[ -d $KINDLING_CACHE ]] && print yes')" "yes"
 
 check "is idempotent when sourced twice" \
-  "$(kindling_sh "source '$KINDLING_SRC/kindling.zsh'; print -- \$KINDLING_VERSION")" "1.0.0"
+  "$(kindling_sh "source '$KINDLING_SRC/kindling.zsh'; print -- \$KINDLING_VERSION")" "$VERSION"
 
 # Install-method detection is tested against copies that are actually shaped
 # the right way, rather than against whatever the working tree happens to be.
@@ -379,7 +384,7 @@ check "an unknown theme falls back to spark" \
 # -----------------------------------------------------------------------------
 print -- "\ntools/kindling"
 check "kindling version" \
-  "$(kindling_sh 'kindling version')" "kindling 1.0.0"
+  "$(kindling_sh 'kindling version')" "kindling $VERSION"
 
 check_contains "kindling help mentions doctor" \
   "$(kindling_sh 'kindling help')" "doctor"
@@ -637,13 +642,13 @@ OMZ
     zsh -i -c 'print -r -- "${KINDLING_VERSION:-absent}/$(( $+functions[omz_marker] ))"' 2>/dev/null | tail -1
   }
 
-  check "with Kindling on, only Kindling loads" "$(installed_shell)" "1.0.0/0"
+  check "with Kindling on, only Kindling loads" "$(installed_shell)" "$VERSION/0"
 
   : >| "$home/.kindling-off"
   check "with Kindling off, only the other framework loads" "$(installed_shell)" "absent/1"
   command rm -f "$home/.kindling-off"
 
-  check "switching back turns Kindling on again" "$(installed_shell)" "1.0.0/0"
+  check "switching back turns Kindling on again" "$(installed_shell)" "$VERSION/0"
 
   HOME="$home" sh "$KINDLING_SRC/install.sh" --dir "$home/.kindling" --uninstall >/dev/null 2>&1
   # $KINDLING can go missing: an external drive unmounts, a checkout is moved.

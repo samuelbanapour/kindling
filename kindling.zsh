@@ -11,7 +11,7 @@
 
 # --- guard against double-sourcing ------------------------------------------
 (( ${+KINDLING_VERSION} )) && return 0
-typeset -gr KINDLING_VERSION="1.0.0"
+typeset -gr KINDLING_VERSION="1.0.1"
 
 # --- resolve paths -----------------------------------------------------------
 if [[ -z $KINDLING ]]; then
