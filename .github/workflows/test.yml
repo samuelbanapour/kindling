@@ -76,7 +76,9 @@ jobs:
           wget -q "https://sourceforge.net/projects/zsh/files/zsh/${{ matrix.zsh }}/zsh-${{ matrix.zsh }}.tar.xz/download" -O zsh.tar.xz
           tar xf zsh.tar.xz
           cd "zsh-${{ matrix.zsh }}"
-          ./configure --prefix="$HOME/zsh" >/dev/null
+          # zsh's configure probes tcsetpgrp by running it, which needs a
+          # controlling tty. There isn't one in CI, so tell it the answer.
+          ./configure --prefix="$HOME/zsh" --with-tcsetpgrp >/dev/null
           make -j"$(nproc)" >/dev/null && make install >/dev/null
       - name: Run the suite
         run: "$HOME/zsh/bin/zsh test/run.zsh"

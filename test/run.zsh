@@ -492,8 +492,15 @@ check "a UTF-8 locale is detected" \
 check "a C locale is detected" \
   "$(LC_ALL=C kindling_sh 'print -- $KINDLING_UTF8')" "0"
 
+# Explicitly cleared rather than assumed: this passed locally only because
+# LANG happened to be unset there, and CI runners set it.
 check "an unset locale is treated as ASCII" \
-  "$(kindling_sh 'print -- $KINDLING_UTF8' )" "0"
+  "$(env -u LANG -u LC_ALL -u LC_CTYPE zsh -fc "
+      KINDLING='$KINDLING_SRC'
+      kindling_plugins=(); KINDLING_THEME=none; KINDLING_QUIET=1
+      source '$KINDLING_SRC/kindling.zsh' 2>/dev/null
+      print -- \$KINDLING_UTF8")" \
+  "0"
 
 check "glyphs are ASCII under a C locale" \
   "$(LC_ALL=C kindling_sh 'print -- "${KINDLING_GLYPH[prompt]}${KINDLING_GLYPH[ahead]}${KINDLING_GLYPH[fail]}"')" \
