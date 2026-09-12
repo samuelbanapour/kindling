@@ -1,5 +1,7 @@
 # Kindling
 
+[![test](https://github.com/samuelbanapour/kindling/actions/workflows/test.yml/badge.svg)](https://github.com/samuelbanapour/kindling/actions/workflows/test.yml)
+
 A zsh framework. Same job as oh-my-zsh — plugins, themes, sane defaults, one
 command to manage it — built around the things that go wrong with the usual
 setup: slow startup, a prompt that stalls in big repositories, and highlighting
@@ -13,14 +15,15 @@ and autosuggestion plugins that fight each other over the same line.
 ## Install
 
 ```sh
-git clone https://github.com/kindling-zsh/kindling.git ~/.kindling
+git clone https://github.com/samuelbanapour/kindling.git ~/.kindling
 sh ~/.kindling/install.sh
 ```
 
-Or with Homebrew, once the tap is published:
+Or with Homebrew:
 
 ```sh
-brew tap kindling-zsh/kindling && brew install kindling
+brew tap samuelbanapour/kindling
+brew install kindling
 ```
 
 A Homebrew install keeps your own plugins and themes under

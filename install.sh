@@ -10,7 +10,7 @@
 set -eu
 
 KINDLING_DIR="${KINDLING:-$HOME/.kindling}"
-REPO="${KINDLING_REPO:-https://github.com/kindling-zsh/kindling.git}"
+REPO="${KINDLING_REPO:-https://github.com/samuelbanapour/kindling.git}"
 TOUCH_ZSHRC=1
 DRY_RUN=0
 REPLACE_OMZ=0

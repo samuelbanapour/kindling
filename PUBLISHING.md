@@ -33,7 +33,7 @@ So: ship the tap now, open a core PR later if it gets traction.
 The repo needs to exist publicly before a formula can point at it.
 
 ```sh
-cd <the kindling checkout>
+cd the kindling checkout
 gh repo create kindling --public --source=. --remote=origin \
   --description "A zsh framework: async prompt, lazy loading, one-pass line editing"
 git push -u origin main
@@ -51,7 +51,7 @@ your `git archive`. Take the checksum from the URL Homebrew will actually
 fetch:
 
 ```sh
-curl -fsSL https://github.com/<you>/kindling/archive/refs/tags/v1.0.0.tar.gz \
+curl -fsSL https://github.com/samuelbanapour/kindling/archive/refs/tags/v1.0.0.tar.gz \
   | shasum -a 256
 ```
 
@@ -70,7 +70,7 @@ git add . && git commit -m "kindling 1.0.0" && git push
 Then anyone can install it:
 
 ```sh
-brew tap <you>/kindling
+brew tap samuelbanapour/kindling
 brew install kindling
 ```
 
@@ -78,9 +78,9 @@ brew install kindling
 
 ```sh
 brew style   --formula Formula/kindling.rb          # lint
-brew install --build-from-source <you>/kindling/kindling
-brew test    <you>/kindling/kindling                   # runs the formula's test block
-brew audit --strict --formula <you>/kindling/kindling  # what core CI would run
+brew install --build-from-source samuelbanapour/kindling/kindling
+brew test    samuelbanapour/kindling/kindling                   # runs the formula's test block
+brew audit --strict --formula samuelbanapour/kindling/kindling  # what core CI would run
 ```
 
 All four pass on the formula in this repo.
