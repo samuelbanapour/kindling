@@ -197,6 +197,15 @@ if [ "$IN_PLACE" = 0 ] && [ ! -e "$EMBER_DIR" ]; then
   if [ -f "$SOURCE_DIR/ember.zsh" ]; then
     run mkdir -p "$EMBER_DIR"
     run cp -R "$SOURCE_DIR/." "$EMBER_DIR/"
+    # An installed copy is not a checkout. Carrying .git across would make
+    # Ember report itself as a git install and send `ember update` to `git
+    # pull` in a directory with no remote, instead of telling the user to
+    # re-run the installer. Also drop the AppleDouble sidecars that macOS
+    # leaves on exFAT volumes, which otherwise travel with the copy.
+    if [ "$DRY_RUN" = 0 ]; then
+      rm -rf "$EMBER_DIR/.git"
+      find "$EMBER_DIR" -name '._*' -delete 2>/dev/null || true
+    fi
     did "copy the files from $SOURCE_DIR"
   elif command -v git >/dev/null 2>&1; then
     run git clone --depth 1 -- "$REPO" "$EMBER_DIR" || die "clone failed"

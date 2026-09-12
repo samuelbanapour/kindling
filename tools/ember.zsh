@@ -282,7 +282,13 @@ _ember_cmd_update() {
       command git -C "$EMBER" log --oneline "$before..$after" | head -20
     fi
   else
-    print -- "$EMBER is not a git checkout; nothing to pull"
+    # A copy made by install.sh. Point at the thing that can actually update it
+    # rather than leaving the user to work it out.
+    print -- "$EMBER is an installed copy, not a checkout — nothing to pull."
+    print -- "Update it by re-running the installer from wherever the repository is:"
+    print -- ""
+    print -- "    sh /path/to/ember/install.sh --dir $EMBER"
+    print -- ""
   fi
   command rm -f -- "$EMBER_COMPDUMP" "$EMBER_COMPDUMP.zwc" 2>/dev/null
   print -- "caches cleared — run 'ember reload'"

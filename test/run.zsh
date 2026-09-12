@@ -631,6 +631,12 @@ OMZ
     "$(command diff -q "$SANDBOX/zshrc.original" "$home/.zshrc" >/dev/null && print identical)" \
     "identical"
 
+  # An installed copy must not look like a checkout, or `ember update` would
+  # try to `git pull` a directory that has no remote.
+  check "the installer does not copy .git into the install" \
+    "$([[ -d $home/.ember/.git ]] && print copied || print absent)" \
+    "absent"
+
   check "uninstall leaves the install directory alone without --purge" \
     "$([[ -d $home/.ember ]] && print kept)" "kept"
 
