@@ -12,6 +12,8 @@ ember() {
     (enable|add)       _ember_cmd_enable "$@" ;;
     (disable|rm)       _ember_cmd_disable "$@" ;;
     (theme)            _ember_cmd_theme "$@" ;;
+    (off)              _ember_cmd_off "$@" ;;
+    (on)               _ember_cmd_on "$@" ;;
     (reload)           _ember_cmd_reload "$@" ;;
     (update|upgrade)   _ember_cmd_update "$@" ;;
     (doctor)           _ember_cmd_doctor "$@" ;;
@@ -33,6 +35,8 @@ usage: ember <command> [args]
   enable <plugin>...        add plugins to ~/.zshrc and load them now
   disable <plugin>...       remove plugins from ~/.zshrc
   theme [name]              show or switch the prompt theme
+  off                       stop loading Ember (back to your previous setup)
+  on                        start loading Ember again
   reload                    re-exec the shell with a fresh config
   update                    pull the latest Ember and rebuild caches
   doctor                    check the install for common problems
@@ -205,6 +209,38 @@ _ember_cmd_theme() {
   print -- "theme: $name"
 }
 
+# --- the off switch ----------------------------------------------------------
+#
+# The .zshrc block Ember installs is wrapped in a test for this file. That makes
+# the framework removable without editing anything, which matters in two
+# situations: you want your previous setup back, and Ember has broken your shell
+# badly enough that editing .zshrc from inside it is unpleasant. For the second,
+# `touch ~/.ember-off` from any shell — including a bare `zsh -f` — gets you out.
+
+: ${EMBER_SWITCH:="$HOME/.ember-off"}
+typeset -g EMBER_SWITCH
+
+_ember_cmd_off() {
+  if [[ -f $EMBER_SWITCH ]]; then
+    print -- "Ember is already off. Turn it back on with: ember on"
+    return 0
+  fi
+  : >| "$EMBER_SWITCH" || return 1
+  print -- "Ember off. Whatever your .zshrc loaded before it takes over again."
+  print -- "Turn it back on with: ember on"
+  exec "${SHELL:-zsh}" -l
+}
+
+_ember_cmd_on() {
+  if [[ ! -f $EMBER_SWITCH ]]; then
+    print -- "Ember is already on."
+    return 0
+  fi
+  command rm -f -- "$EMBER_SWITCH" || return 1
+  print -- "Ember on."
+  exec "${SHELL:-zsh}" -l
+}
+
 # --- reload / update ---------------------------------------------------------
 
 _ember_cmd_reload() {
@@ -297,6 +333,24 @@ _ember_cmd_doctor() {
     _ember_mark "$ok" "$EMBER_ZSHRC sources ember.zsh"
   else
     _ember_mark "$bad" "$EMBER_ZSHRC does not source ember.zsh"; (( problems++ ))
+  fi
+
+  # If the block is guarded, say so, and say how to use the guard. Someone
+  # reading doctor output in a panic should not have to find this in a README.
+  if [[ -f $EMBER_ZSHRC ]] && command grep -q 'ember-off' "$EMBER_ZSHRC"; then
+    _ember_mark "$ok" "off switch installed (ember off / ember on)"
+  else
+    _ember_mark "$warn" "no off switch in $EMBER_ZSHRC; 'ember off' will not work"
+  fi
+
+  # Two frameworks loading at once is the failure this is meant to catch.
+  if [[ -f $EMBER_ZSHRC ]] && command grep -q 'oh-my-zsh\.sh' "$EMBER_ZSHRC"; then
+    if command grep -q 'ember-off.*oh-my-zsh\.sh' "$EMBER_ZSHRC"; then
+      _ember_mark "$ok" "oh-my-zsh still installed; it loads when Ember is off"
+    else
+      _ember_mark "$bad" "oh-my-zsh also loads from $EMBER_ZSHRC - both frameworks are running"
+      (( problems++ ))
+    fi
   fi
 
   # A group- or world-writable directory in fpath makes compinit refuse to
@@ -447,6 +501,8 @@ _ember_complete() {
     'enable:turn a plugin on'
     'disable:turn a plugin off'
     'theme:show or switch the prompt theme'
+    'off:stop loading Ember'
+    'on:start loading Ember again'
     'reload:restart the shell'
     'update:pull the latest Ember'
     'doctor:check the install'

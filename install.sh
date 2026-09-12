@@ -14,7 +14,9 @@ REPO="${EMBER_REPO:-https://github.com/ember-zsh/ember.git}"
 TOUCH_ZSHRC=1
 DRY_RUN=0
 REPLACE_OMZ=0
-SOURCE_DIR="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
+UNINSTALL=0
+PURGE=0
+SOURCE_DIR="$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)"
 
 # --- output helpers ----------------------------------------------------------
 if [ -t 1 ] && [ "${NO_COLOR:-}" = "" ]; then
@@ -50,13 +52,20 @@ while [ $# -gt 0 ]; do
     --repo)      REPO=$2; shift 2 ;;
     --no-zshrc)  TOUCH_ZSHRC=0; shift ;;
     --replace-omz) REPLACE_OMZ=1; shift ;;
+    --uninstall)   UNINSTALL=1; shift ;;
+    --purge)       UNINSTALL=1; PURGE=1; shift ;;
     --dry-run)   DRY_RUN=1; shift ;;
     -h|--help)
       say "usage: sh install.sh [--dir <path>] [--repo <url>] [--no-zshrc]"
       say "                      [--replace-omz] [--dry-run]"
+      say "       sh install.sh --uninstall [--purge] [--dry-run]"
       say ""
-      say "  --replace-omz  comment out the oh-my-zsh loader before installing,"
-      say "                 so the two frameworks don't both run"
+      say "  --replace-omz  make oh-my-zsh conditional so the two frameworks"
+      say "                 don't both run. Reversible with \`ember off\`;"
+      say "                 oh-my-zsh is never removed"
+      say "  --uninstall    remove Ember's block from .zshrc and restore any"
+      say "                 framework it made conditional"
+      say "  --purge        --uninstall, and also delete the install directory"
       exit 0 ;;
     *) die "unknown option: $1" ;;
   esac
@@ -68,6 +77,70 @@ if [ "$DRY_RUN" = 1 ]; then
   say "${YELLOW}dry run — showing what would happen, changing nothing${RESET}"
 fi
 say ""
+
+# --- uninstall ---------------------------------------------------------------
+if [ "$UNINSTALL" = 1 ]; then
+  ZSHRC="$HOME/.zshrc"
+  step "Uninstalling Ember"
+
+  if [ ! -f "$ZSHRC" ]; then
+    warn "no $ZSHRC to clean up"
+  elif ! grep -q '# --- Ember ---' "$ZSHRC" 2>/dev/null; then
+    warn "$ZSHRC has no Ember block; leaving it alone"
+  else
+    BACKUP="$ZSHRC.pre-uninstall.$(date +%Y%m%d%H%M%S)"
+    run cp -- "$ZSHRC" "$BACKUP"
+    did "back up $ZSHRC to $BACKUP"
+
+    if [ "$DRY_RUN" = 0 ]; then
+      TMP="$ZSHRC.ember.$$"
+      # Drop everything between the block markers, and undo the guard that was
+      # put in front of another framework's loader.
+      awk '
+        /^# --- Ember ---/      { skip = 1; next }
+        /^# --- end Ember ---/  { skip = 0; next }
+        skip                    { next }
+        /^[[:space:]]*# Ember made this conditional/ { next }
+        {
+          # `[ -f "$HOME/.ember-off" ] && source ...` -> `source ...`
+          sub(/\[ -f "\$HOME\/\.ember-off" \] && /, "")
+          # Hold blank lines back rather than printing them straight away, so
+          # the blank that preceded the removed block does not survive it.
+          # They are emitted only once a non-blank line follows, which means
+          # trailing blanks are dropped and the file ends exactly as it began.
+          if ($0 ~ /^[[:space:]]*$/) { pending = pending $0 "\n"; next }
+          if (pending != "") { printf "%s", pending; pending = "" }
+          print
+        }
+      ' "$ZSHRC" > "$TMP" && mv -f "$TMP" "$ZSHRC"
+    fi
+    did "remove Ember's block from $ZSHRC"
+    did "restore any framework loader Ember had made conditional"
+  fi
+
+  [ -f "$HOME/.ember-off" ] && { run rm -f "$HOME/.ember-off"; did "remove the off switch"; }
+
+  if [ "$PURGE" = 1 ]; then
+    [ -d "$EMBER_DIR" ] && { run rm -rf "$EMBER_DIR"; did "delete $EMBER_DIR"; }
+    for d in "${XDG_CACHE_HOME:-$HOME/.cache}/ember" "${XDG_DATA_HOME:-$HOME/.local/share}/ember"; do
+      [ -d "$d" ] && { run rm -rf "$d"; did "delete $d"; }
+    done
+  else
+    say ""
+    say "  Left in place (use --purge to remove):"
+    [ -d "$EMBER_DIR" ] && say "    $EMBER_DIR"
+    say "    your plugins and themes, and your shell history"
+  fi
+
+  say ""
+  if [ "$DRY_RUN" = 1 ]; then
+    say "${YELLOW}Dry run finished. Nothing was changed.${RESET}"
+  else
+    say "${GREEN}Done.${RESET} Start a new shell: ${BOLD}exec zsh${RESET}"
+  fi
+  say ""
+  exit 0
+fi
 
 # --- prerequisites -----------------------------------------------------------
 step "Checking prerequisites"
@@ -148,12 +221,14 @@ if [ "$TOUCH_ZSHRC" = 1 ] && [ -n "$OMZ_LINE" ] && [ "$REPLACE_OMZ" = 0 ]; then
   say "  Pick one:"
   say ""
   say "    ${BOLD}sh install.sh --replace-omz${RESET}"
-  say "      comment out the oh-my-zsh loader, then install Ember."
-  say "      Your .zshrc is backed up first and nothing else is touched,"
-  say "      so undoing it is one uncommented line."
+  say "      Make Ember the active framework, reversibly. oh-my-zsh is left"
+  say "      completely intact: the files stay, its line stays in your .zshrc,"
+  say "      and it simply becomes conditional so it loads whenever Ember is"
+  say "      switched off. Afterwards ${BOLD}ember off${RESET} returns you to"
+  say "      oh-my-zsh and ${BOLD}ember on${RESET} comes back. Nothing is deleted."
   say ""
   say "    ${BOLD}sh install.sh --no-zshrc${RESET}"
-  say "      install the files only and wire it up yourself later."
+  say "      Install the files only and wire it up yourself later."
   say ""
   exit 1
 fi
@@ -170,16 +245,17 @@ if [ "$TOUCH_ZSHRC" = 1 ]; then
       did "back up your existing .zshrc to $BACKUP"
 
       if [ "$REPLACE_OMZ" = 1 ] && [ -n "$OMZ_LINE" ]; then
-        # Comment out only the line that actually loads oh-my-zsh. ZSH_THEME
-        # and plugins=() are inert without it, and leaving them makes going
-        # back a matter of removing one `#`.
+        # Make oh-my-zsh conditional instead of removing it. The line stays,
+        # oh-my-zsh stays installed, and it loads again the moment Ember is
+        # switched off — so this is reversible without editing anything.
         if [ "$DRY_RUN" = 0 ]; then
           TMP="$ZSHRC.ember.$$"
-          sed 's|^\([[:space:]]*source[[:space:]].*oh-my-zsh\.sh.*\)$|# disabled by the Ember installer: \1|' \
-            "$ZSHRC" > "$TMP" && mv -f "$TMP" "$ZSHRC"
+          # shellcheck disable=SC2016  # $HOME is written literally, on purpose:
+          # it is expanded by the user's shell when their .zshrc runs, not here.
+          sed 's|^\([[:space:]]*\)\(source[[:space:]].*oh-my-zsh\.sh.*\)$|\1# Ember made this conditional; it loads whenever Ember is switched off.\
+\1[ -f "$HOME/.ember-off" ] \&\& \2|' "$ZSHRC" > "$TMP" && mv -f "$TMP" "$ZSHRC"
         fi
-        did "comment out the oh-my-zsh loader (line ${OMZ_LINE%%:*})"
-        say "    Undo it by deleting the '# disabled by the Ember installer:' prefix."
+        did "make oh-my-zsh conditional (line ${OMZ_LINE%%:*}) — it is not removed"
       fi
 
       # Append rather than replace: an existing .zshrc is the user's work and
@@ -187,12 +263,19 @@ if [ "$TOUCH_ZSHRC" = 1 ]; then
       # both define the same alias, Ember's wins — which is why the note below
       # tells the user how to get the other precedence.
       if [ "$DRY_RUN" = 0 ]; then
+        # shellcheck disable=SC2016  # Everything here is written verbatim into
+        # the user's .zshrc; $HOME and $EMBER must survive as literal text.
         {
           printf '\n# --- Ember ---------------------------------------------------------------\n'
-          printf 'export EMBER="%s"\n' "$EMBER_DIR"
-          printf 'ember_plugins=(git jump zline extract)\n'
-          printf 'EMBER_THEME=spark\n'
-          printf 'source "$EMBER/ember.zsh"\n'
+          printf '# `ember off` creates ~/.ember-off and this block stops loading, which\n'
+          printf '# restores whatever your shell did before. `ember on` removes it again.\n'
+          printf '# If Ember ever breaks your shell:  touch ~/.ember-off\n'
+          printf 'if [ ! -f "$HOME/.ember-off" ]; then\n'
+          printf '  export EMBER="%s"\n' "$EMBER_DIR"
+          printf '  ember_plugins=(git jump zline extract)\n'
+          printf '  EMBER_THEME=spark\n'
+          printf '  source "$EMBER/ember.zsh"\n'
+          printf 'fi\n'
           printf '# --- end Ember -----------------------------------------------------------\n'
         } >> "$ZSHRC"
       fi

@@ -17,6 +17,16 @@ git clone https://github.com/ember-zsh/ember.git ~/.ember
 sh ~/.ember/install.sh
 ```
 
+Or with Homebrew, once the tap is published:
+
+```sh
+brew tap ember-zsh/ember && brew install ember
+```
+
+A Homebrew install keeps your own plugins and themes under
+`$XDG_DATA_HOME/ember/custom` rather than inside the Cellar, so `brew upgrade`
+can't delete them. See [PUBLISHING.md](PUBLISHING.md).
+
 The installer never overwrites anything. An existing `~/.zshrc` is backed up
 and Ember's block is *appended* below what you already had, so nothing of yours
 is lost — though it does mean Ember loads last and wins where you both define

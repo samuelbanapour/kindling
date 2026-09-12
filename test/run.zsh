@@ -27,6 +27,11 @@ ember_sh() {
   EMBER="$EMBER_SRC" \
   EMBER_CUSTOM="$SANDBOX/custom" \
   EMBER_QUIET=1 \
+  SANDBOX="$SANDBOX" \
+  SANDBOX_SWITCH="$SANDBOX/off1" \
+  SANDBOX_SWITCH2="$SANDBOX/off2" \
+  SANDBOX_SWITCH3="$SANDBOX/off3" \
+  SANDBOX_SWITCH4="$SANDBOX/off4" \
   zsh -f -c "
     setopt no_global_rcs
     ember_plugins=(${EMBER_TEST_PLUGINS:-})
@@ -384,6 +389,216 @@ check "custom plugins shadow bundled ones" \
      source "$(_ember_find_plugin git)"
      print -- $EMBER_SHADOW')" \
   "yes"
+
+# -----------------------------------------------------------------------------
+print -- "\nthe off switch"
+
+# _ember_cmd_off ends in `exec`, which never returns — run it in a subshell so
+# only the subshell is replaced, then check the result from the parent.
+check "ember off creates the switch file" \
+  "$(ember_sh 'EMBER_SWITCH=$SANDBOX_SWITCH
+      ( SHELL=/usr/bin/true _ember_cmd_off >/dev/null 2>&1 )
+      [[ -f $EMBER_SWITCH ]] && print yes || print no')" \
+  "yes"
+
+check "ember on removes the switch file" \
+  "$(ember_sh 'EMBER_SWITCH=$SANDBOX_SWITCH4
+      : >| $EMBER_SWITCH
+      ( SHELL=/usr/bin/true _ember_cmd_on >/dev/null 2>&1 )
+      [[ -f $EMBER_SWITCH ]] && print no || print yes')" \
+  "yes"
+
+check "ember off is idempotent" \
+  "$(ember_sh 'EMBER_SWITCH=$SANDBOX_SWITCH2
+      : >| $EMBER_SWITCH
+      ember off')" \
+  "Ember is already off. Turn it back on with: ember on"
+
+check "ember on reports when already on" \
+  "$(ember_sh 'EMBER_SWITCH=$SANDBOX_SWITCH3; ember on')" \
+  "Ember is already on."
+
+# The guard is what makes `ember off` work at all, and doubles as the recovery
+# hatch when Ember itself is what broke the shell.
+check "the installed block is guarded by the switch" \
+  "$(command grep -c '^if \[ ! -f "\$HOME/.ember-off" \]; then$' "$EMBER_SRC/templates/zshrc.template")" \
+  "1"
+
+check "a guarded block does not load when the switch is set" \
+  "$(HOME=$SANDBOX/guard zsh -fc '
+      mkdir -p $HOME 2>/dev/null
+      : >| $HOME/.ember-off
+      if [ ! -f "$HOME/.ember-off" ]; then print loaded; else print skipped; fi')" \
+  "skipped"
+
+# -----------------------------------------------------------------------------
+print -- "\nthemes: rendered states"
+
+# Each theme must survive the states a prompt actually meets, not just the
+# happy path: a failing command, a background job, a virtualenv, an ssh
+# session, and a deep path.
+for theme in spark minimal quill bar; do
+  check "theme '$theme' renders a failure state" \
+    "$(EMBER_TEST_THEME=$theme ember_sh "EMBER_LAST_STATUS=127
+        _ember_${theme}_precmd
+        print -- \$(( \${#PROMPT} > 0 ))")" "1"
+
+  check "theme '$theme' survives a virtualenv" \
+    "$(EMBER_TEST_THEME=$theme ember_sh "VIRTUAL_ENV=/tmp/venvy
+        _ember_${theme}_precmd
+        print -- \$(( \${#PROMPT} > 0 ))")" "1"
+
+  check "theme '$theme' survives an ssh session" \
+    "$(EMBER_TEST_THEME=$theme ember_sh "SSH_CONNECTION='1.2.3.4 1 5.6.7.8 22'
+        _ember_${theme}_precmd
+        print -- \$(( \${#PROMPT} > 0 ))")" "1"
+done
+
+check "spark shows command duration only when slow" \
+  "$(EMBER_TEST_THEME=spark ember_sh 'zmodload zsh/datetime
+      _ember_spark_start=$(( EPOCHREALTIME * 1000 - 5000 ))
+      _ember_spark_precmd
+      [[ -n $_ember_spark_elapsed ]] && print slow')" \
+  "slow"
+
+check "spark hides duration for a fast command" \
+  "$(EMBER_TEST_THEME=spark ember_sh 'zmodload zsh/datetime
+      _ember_spark_start=$(( EPOCHREALTIME * 1000 - 10 ))
+      _ember_spark_precmd
+      print -- "[${_ember_spark_elapsed}]"')" \
+  "[]"
+
+check "bar falls back to ASCII separators outside UTF-8" \
+  "$(LC_ALL=C EMBER_TEST_THEME=bar ember_sh 'print -- "[$_ember_bar_sep]"')" \
+  "[]"
+
+# -----------------------------------------------------------------------------
+print -- "\ncross-platform"
+
+check "clipcopy is defined" \
+  "$(ember_sh '(( $+functions[clipcopy] && $+functions[clippaste] )) && print yes')" "yes"
+
+# The point of clipcopy existing at all: `| pbcopy || xclip` would leave xclip
+# reading from the terminal on a machine without pbcopy.
+check "clipcopy fails loudly when no clipboard tool exists" \
+  "$(ember_sh 'clipcopy() {
+        (( $+commands[definitely-not-pbcopy] )) || { print -ru2 "no clipboard tool"; return 1 }
+      }
+      print hi | clipcopy 2>&1; print -- "rc=$?"')" \
+  "no clipboard tool
+rc=1"
+
+check "the C global alias goes through clipcopy" \
+  "$(ember_sh 'print -r -- ${galiases[C]}')" "| clipcopy"
+
+check "the macos plugin is inert off macOS" \
+  "$(ember_sh 'OSTYPE=linux-gnu
+      source $EMBER/plugins/macos/macos.plugin.zsh
+      print -- $(( $+functions[cdf] ))')" \
+  "0"
+
+check "the macos plugin does load on macOS" \
+  "$(ember_sh 'OSTYPE=darwin24.0
+      source $EMBER/plugins/macos/macos.plugin.zsh
+      print -- $(( $+functions[cdf] ))')" \
+  "1"
+
+check "ls aliases pick a GNU form on Linux" \
+  "$(ember_sh 'OSTYPE=linux-gnu
+      unalias ls ll la 2>/dev/null
+      unset -f ls 2>/dev/null
+      source $EMBER/lib/aliases.zsh
+      [[ ${aliases[ll]} == *--color=auto* || ${aliases[ll]} == eza* ]] && print yes')" \
+  "yes"
+
+check "extract refuses a .dmg where hdiutil does not exist" \
+  "$(EMBER_TEST_PLUGINS=extract ember_sh 'cd $SANDBOX
+      : >| fake.dmg
+      unset "commands[hdiutil]"
+      extract fake.dmg 2>&1 >/dev/null | head -1')" \
+  "extract: .dmg images can only be opened on macOS"
+
+check "the jump lock waits without forking sleep" \
+  "$(ember_sh 'zmodload zsh/zselect 2>/dev/null; print -- $(( $+builtins[zselect] ))')" \
+  "1"
+
+# -----------------------------------------------------------------------------
+print -- "\ninstaller"
+
+# A full install / switch / uninstall cycle against a .zshrc that already loads
+# another framework. This is the path most likely to break someone's shell, so
+# it is exercised end to end rather than by inspecting the script.
+() {
+  local home="$SANDBOX/inst"
+  command mkdir -p "$home/.oh-my-zsh"
+  cat > "$home/.zshrc" <<'RC'
+# the user's own config
+export EDITOR=vim
+alias mine='echo hi'
+export ZSH="$HOME/.oh-my-zsh"
+source $ZSH/oh-my-zsh.sh
+export PATH="$HOME/bin:$PATH"
+RC
+  cat > "$home/.oh-my-zsh/oh-my-zsh.sh" <<'OMZ'
+omz_marker() { : }
+PROMPT='omz> '
+OMZ
+  command cp "$home/.zshrc" "$SANDBOX/zshrc.original"
+
+  # Installing over another framework must refuse without an explicit flag.
+  HOME="$home" sh "$EMBER_SRC/install.sh" --dir "$home/.ember" >/dev/null 2>&1
+  check "installer refuses to stack on another framework" "$?" "1"
+
+  check "a refused install changes nothing" \
+    "$(command diff -q "$SANDBOX/zshrc.original" "$home/.zshrc" >/dev/null && print unchanged)" \
+    "unchanged"
+
+  HOME="$home" sh "$EMBER_SRC/install.sh" --dir "$home/.ember" --replace-omz >/dev/null 2>&1
+  check "installer succeeds with --replace-omz" "$?" "0"
+
+  check "the other framework is made conditional, not removed" \
+    "$(command grep -c '^\[ -f "\$HOME/.ember-off" \] && source \$ZSH/oh-my-zsh.sh$' "$home/.zshrc")" \
+    "1"
+
+  check "the user's own config survives" \
+    "$(command grep -c "alias mine='echo hi'" "$home/.zshrc")" "1"
+
+  # Which framework is live, from a real interactive shell using this .zshrc.
+  installed_shell() {
+    HOME="$home" \
+    XDG_CACHE_HOME="$SANDBOX/ic" \
+    XDG_DATA_HOME="$SANDBOX/id" \
+    XDG_STATE_HOME="$SANDBOX/is" \
+    zsh -i -c 'print -r -- "${EMBER_VERSION:-absent}/$(( $+functions[omz_marker] ))"' 2>/dev/null | tail -1
+  }
+
+  check "with Ember on, only Ember loads" "$(installed_shell)" "1.0.0/0"
+
+  : >| "$home/.ember-off"
+  check "with Ember off, only the other framework loads" "$(installed_shell)" "absent/1"
+  command rm -f "$home/.ember-off"
+
+  check "switching back turns Ember on again" "$(installed_shell)" "1.0.0/0"
+
+  HOME="$home" sh "$EMBER_SRC/install.sh" --dir "$home/.ember" --uninstall >/dev/null 2>&1
+  check "uninstall restores the .zshrc byte for byte" \
+    "$(command diff -q "$SANDBOX/zshrc.original" "$home/.zshrc" >/dev/null && print identical)" \
+    "identical"
+
+  check "uninstall leaves the install directory alone without --purge" \
+    "$([[ -d $home/.ember ]] && print kept)" "kept"
+
+  HOME="$home" sh "$EMBER_SRC/install.sh" --dir "$home/.ember" --purge >/dev/null 2>&1
+  check "--purge removes the install directory" \
+    "$([[ -d $home/.ember ]] && print kept || print gone)" "gone"
+
+  # A dry run must not touch anything, on any path.
+  command cp "$SANDBOX/zshrc.original" "$home/.zshrc"
+  HOME="$home" sh "$EMBER_SRC/install.sh" --dir "$home/.ember2" --replace-omz --dry-run >/dev/null 2>&1
+  check "a dry run writes nothing" \
+    "$(command diff -q "$SANDBOX/zshrc.original" "$home/.zshrc" >/dev/null && [[ ! -d $home/.ember2 ]] && print clean)" \
+    "clean"
+}
 
 # -----------------------------------------------------------------------------
 print -- "\nsyntax"

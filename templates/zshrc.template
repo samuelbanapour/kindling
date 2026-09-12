@@ -19,7 +19,12 @@ EMBER_THEME=spark
 # EMBER_PYTHON_AUTOVENV=0      # don't auto-activate virtualenvs on cd
 # EMBER_DISABLE_AUTO_TITLE=1   # leave the terminal title alone
 
-source "$EMBER/ember.zsh"
+# `ember off` creates ~/.ember-off and this block stops loading, restoring
+# whatever your shell did before Ember. `ember on` removes it again.
+# If Ember ever breaks your shell:  touch ~/.ember-off
+if [ ! -f "$HOME/.ember-off" ]; then
+  source "$EMBER/ember.zsh"
+fi
 
 # --- your configuration ------------------------------------------------------
 # Anything below this line loads after Ember, so it wins any conflict.

@@ -1,0 +1,105 @@
+name: test
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+  workflow_dispatch:
+
+# A push that lands while an earlier run is still going supersedes it.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # The suite, on both platforms. macOS is where Ember is developed; Linux is
+  # where its OS-conditional paths (the macos plugin, GNU vs BSD ls) are
+  # actually exercised rather than assumed.
+  test:
+    name: zsh on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, macos-14]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install zsh
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y zsh
+
+      - name: Report versions
+        run: |
+          zsh --version
+          git --version
+          awk --version 2>/dev/null | head -1 || awk -W version 2>&1 | head -1
+
+      - name: Run the suite
+        run: zsh test/run.zsh
+
+      - name: Start an interactive shell and check it comes up clean
+        run: |
+          set -eu
+          HOME_DIR="$(mktemp -d)"
+          cat > "$HOME_DIR/.zshrc" <<EOF
+          export EMBER="$PWD"
+          ember_plugins=(git jump zline extract node python macos docker)
+          EMBER_THEME=spark
+          source "\$EMBER/ember.zsh"
+          EOF
+          # An interactive shell must produce no diagnostics at all. Anything on
+          # stderr here is a plugin failing to load on this platform.
+          out=$(HOME="$HOME_DIR" XDG_CACHE_HOME="$HOME_DIR/c" \
+                XDG_DATA_HOME="$HOME_DIR/d" XDG_STATE_HOME="$HOME_DIR/s" \
+                zsh -i -c 'ember doctor' 2>&1)
+          printf '%s\n' "$out"
+          printf '%s\n' "$out" | grep -q 'no problems found'
+
+  # zsh 5.1 is the documented floor. If a change starts relying on something
+  # newer, this is what catches it.
+  oldest-supported-zsh:
+    name: zsh ${{ matrix.zsh }} (oldest supported)
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        zsh: ['5.1.1', '5.4.2', '5.8']
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build zsh ${{ matrix.zsh }}
+        run: |
+          set -eux
+          sudo apt-get update
+          sudo apt-get install -y build-essential libncurses-dev wget
+          wget -q "https://sourceforge.net/projects/zsh/files/zsh/${{ matrix.zsh }}/zsh-${{ matrix.zsh }}.tar.xz/download" -O zsh.tar.xz
+          tar xf zsh.tar.xz
+          cd "zsh-${{ matrix.zsh }}"
+          ./configure --prefix="$HOME/zsh" >/dev/null
+          make -j"$(nproc)" >/dev/null && make install >/dev/null
+      - name: Run the suite
+        run: "$HOME/zsh/bin/zsh test/run.zsh"
+
+  shell-lint:
+    name: shellcheck install.sh
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: sudo apt-get update && sudo apt-get install -y shellcheck
+      # install.sh must stay portable POSIX sh: it runs before zsh is
+      # necessarily the user's shell.
+      - run: shellcheck --shell=sh install.sh
+
+  formula:
+    name: homebrew formula
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Lint the formula
+        run: |
+          if [ -f Formula/ember.rb ]; then
+            brew style --formula Formula/ember.rb
+          else
+            echo "no formula in this repo; the tap holds it"
+          fi

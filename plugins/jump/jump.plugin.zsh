@@ -59,7 +59,13 @@ _ember_jump_add() {
         command rmdir "$lock" 2>/dev/null
         break
       fi
-      sleep 0.01
+      # zselect waits without forking and, unlike busybox's sleep, accepts a
+      # sub-second interval. -t is in hundredths of a second.
+      if (( $+builtins[zselect] )); then
+        zselect -t 1
+      else
+        sleep 0.01 2>/dev/null || sleep 1
+      fi
     done
 
     command awk -v dir="$dir" -v now="$now" -v max="$EMBER_JUMP_MAX" '
@@ -87,6 +93,7 @@ _ember_jump_add() {
 }
 
 zmodload zsh/datetime 2>/dev/null
+zmodload zsh/zselect 2>/dev/null
 autoload -Uz add-zsh-hook
 add-zsh-hook chpwd _ember_jump_add
 

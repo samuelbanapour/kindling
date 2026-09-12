@@ -45,7 +45,13 @@ extract() {
       (*.bz2)             bunzip2 -c "$file" > "$target/${${file:t}%.bz2}" ;;
       (*.xz)              unxz -c   "$file" > "$target/${${file:t}%.xz}" ;;
       (*.zst)             zstd -dc  "$file" > "$target/${${file:t}%.zst}" ;;
-      (*.dmg)             hdiutil attach "$file" ;;
+      (*.dmg)
+        if (( ! $+commands[hdiutil] )); then
+          print -ru2 -- "extract: .dmg images can only be opened on macOS"
+          rmdir "$target" 2>/dev/null; rc=1; continue
+        fi
+        rmdir "$target" 2>/dev/null   # hdiutil mounts, it does not unpack here
+        hdiutil attach "$file" ;;
       (*)
         print -ru2 -- "extract: don't know how to handle '$file'"
         rmdir "$target" 2>/dev/null

@@ -47,13 +47,41 @@ alias -g G='| grep -i'
 alias -g L='| less -R'
 alias -g NE='2>/dev/null'
 alias -g NUL='>/dev/null 2>&1'
-alias -g C='| pbcopy 2>/dev/null || xclip -selection clipboard'
+alias -g C='| clipcopy'
 
 # Suffix aliases: `foo.md` opens in the right thing.
 if (( $+commands[bat] )); then
   alias cat='bat --paging=never --style=plain'
   alias -s {md,markdown,txt,json,yaml,yml,toml}=bat
 fi
+
+# clipcopy / clippaste — the clipboard, wherever you are.
+#
+# Writing this as `| pbcopy || xclip` looks equivalent and is not: on a system
+# without pbcopy the pipeline fails, and xclip then runs with the terminal as
+# its stdin, where it sits waiting for input that never comes.
+clipcopy() {
+  if (( $+commands[pbcopy] )); then command pbcopy
+  elif [[ -n $WAYLAND_DISPLAY ]] && (( $+commands[wl-copy] )); then command wl-copy
+  elif (( $+commands[xclip] )); then command xclip -selection clipboard
+  elif (( $+commands[xsel] )); then command xsel --clipboard --input
+  elif (( $+commands[clip.exe] )); then command clip.exe          # WSL
+  else
+    print -ru2 -- "clipcopy: no clipboard tool found (pbcopy, wl-copy, xclip, xsel)"
+    return 1
+  fi
+}
+
+clippaste() {
+  if (( $+commands[pbpaste] )); then command pbpaste
+  elif [[ -n $WAYLAND_DISPLAY ]] && (( $+commands[wl-paste] )); then command wl-paste
+  elif (( $+commands[xclip] )); then command xclip -selection clipboard -o
+  elif (( $+commands[xsel] )); then command xsel --clipboard --output
+  else
+    print -ru2 -- "clippaste: no clipboard tool found (pbpaste, wl-paste, xclip, xsel)"
+    return 1
+  fi
+}
 
 # take <dir|url|archive> — the one alias worth being a function.
 # Makes and enters a directory; clones a repo and enters it; extracts an

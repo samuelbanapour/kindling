@@ -17,11 +17,12 @@ cdf() {
 showfiles() { defaults write com.apple.finder AppleShowAllFiles -bool true;  killall Finder }
 hidefiles() { defaults write com.apple.finder AppleShowAllFiles -bool false; killall Finder }
 
-# Clipboard, named the way the rest of the world names them.
-alias pbc='pbcopy'
-alias pbp='pbpaste'
+# Short forms. The cross-platform clipcopy/clippaste in lib/aliases.zsh are
+# what these actually go through, so cpwd works the same way everywhere.
+alias pbc='clipcopy'
+alias pbp='clippaste'
 # cpwd — current directory onto the clipboard.
-cpwd() { print -rn -- "$PWD" | pbcopy && print -- "copied: $PWD" }
+cpwd() { print -rn -- "$PWD" | clipcopy && print -- "copied: $PWD" }
 
 # quicklook <file>
 ql() { qlmanage -p "$@" >/dev/null 2>&1 & }
