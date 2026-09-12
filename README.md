@@ -22,9 +22,16 @@ sh ~/.kindling/install.sh
 Or with Homebrew:
 
 ```sh
+brew trust samuelbanapour/kindling
 brew tap samuelbanapour/kindling
 brew install kindling
 ```
+
+Homebrew 6 will not load a third-party tap until you trust it, and the error
+when you skip that step says `invalid syntax in tap!`, which is not what is
+wrong. Trusting a tap means Homebrew will run its Ruby; the formula is
+[one file](https://github.com/samuelbanapour/homebrew-kindling/blob/main/Formula/kindling.rb)
+and worth reading first.
 
 A Homebrew install keeps your own plugins and themes under
 `$XDG_DATA_HOME/kindling/custom` rather than inside the Cellar, so `brew upgrade`

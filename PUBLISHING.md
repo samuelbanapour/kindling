@@ -70,9 +70,14 @@ git add . && git commit -m "kindling 1.0.0" && git push
 Then anyone can install it:
 
 ```sh
+brew trust samuelbanapour/kindling   # Homebrew 6 gates third-party taps
 brew tap samuelbanapour/kindling
 brew install kindling
 ```
+
+Without the `brew trust`, tapping fails with `invalid syntax in tap!` — which
+describes the tap as broken rather than untrusted. Put the trust line in your
+install instructions or people will file bugs about it.
 
 ## 4. Verify before you announce
 
